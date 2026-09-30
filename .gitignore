@@ -1,0 +1,32 @@
+# Environment variables
+.env
+.env.backup
+.env.production
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies
+vendor/
+**/vendor/
+node_modules/
+**/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Caches and logs
+**/.phpunit.result.cache
+**/storage/logs/*
+**/storage/framework/cache/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+
+# OS and IDE files
+.DS_Store
+**/.DS_Store
+Thumbs.db
+**/Thumbs.db
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/

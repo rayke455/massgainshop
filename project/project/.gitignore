@@ -1,0 +1,6 @@
+.env
+.idea
+vendor
+modules_statuses.json
+/storage/logs
+/assets/upload
