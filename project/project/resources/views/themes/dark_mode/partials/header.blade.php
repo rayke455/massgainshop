@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg fixed-top dark-mode-header">
     <div class="container">
         <a class="navbar-brand" href="{{ url('/') }}">
-            <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}" alt="@lang('Logo')">
+            <img src="{{ getFile(basicControl()->admin_dark_mode_logo_driver, basicControl()->admin_dark_mode_logo) }}" alt="@lang('Logo')">
         </a>
         <button
             class="navbar-toggler p-0"

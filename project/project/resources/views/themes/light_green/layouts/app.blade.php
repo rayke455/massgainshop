@@ -27,6 +27,9 @@
 
     <link rel="shortcut icon" href="{{ getFile(basicControl()->favicon_driver, basicControl()->favicon) }}"
           type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/owl.carousel.min.css') }}">
@@ -34,6 +37,8 @@
     <link rel="stylesheet" href="{{ asset('assets/global/css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/fancybox.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset(template(true). 'css/zirka.css') }}">
+    <script>document.documentElement.classList.add('zk-js');</script>
 
     @stack('css-lib')
 
@@ -41,16 +46,12 @@
 
 </head>
 
-<body class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}" onload="preloaderFunction()">
+<body class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}">
 
-<div id="preloader">
-    <img class="preloader-image" src="{{ asset(template(true). 'img/preloader/preloader.png') }}" alt="">
-</div>
-
-
-@include(template().'partials.banner')
 
 @include(template().'partials.header')
+
+@include(template().'partials.banner')
 
 @yield('content')
 
@@ -67,6 +68,25 @@
 @stack('js-lib')
 
 <script src="{{ asset(template(true). 'js/main.js') }}"></script>
+<script>
+    "use strict";
+    (function () {
+        const items = document.querySelectorAll('.zk-reveal');
+        if (!('IntersectionObserver' in window)) {
+            items.forEach(el => el.classList.add('is-in'));
+            return;
+        }
+        const io = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-in');
+                    io.unobserve(entry.target);
+                }
+            });
+        }, {rootMargin: '0px 0px -8% 0px'});
+        items.forEach(el => io.observe(el));
+    })();
+</script>
 
 @stack('script')
 
@@ -105,6 +125,12 @@
 @include('plugins')
 
 @include(template().'partials.pwa')
+@include(template().'partials.geo')
+@include(template().'partials.auto_translate')
+@include(template().'partials.auto_currency')
+@if(request()->is('/'))
+    @include(template().'partials.activity_popup')
+@endif
 
 </body>
 

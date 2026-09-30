@@ -1,104 +1,120 @@
-<nav class="navbar fixed-top navbar-expand-lg {{ url('/') == request()->url() ? 'transparent' : '' }} ">
+@php
+    $currencyRes = request()->cookie('currency');
+    $currencyCookie = json_decode($currencyRes);
+@endphp
+<nav class="navbar fixed-top navbar-expand-lg zk-nav">
     <div class="container">
-        <a class="navbar-brand logo" href="{{ url('/') }}">
-            <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}" alt="@lang("Logo")">
+        <a class="navbar-brand logo notranslate" href="{{ url('/') }}">
+            <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
+                 alt="{{ basicControl()->site_title }}">
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
-                aria-controls="offcanvasNavbar">
-            <i class="fa-light fa-list"></i>
-        </button>
         <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbar">
             <div class="offcanvas-header">
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    <img class="logo" src="{{ getFile(basicControl()->admin_logo_driver,basicControl()->admin_logo) }}"
-                         alt="@lang("Logo")">
+                <a class="navbar-brand logo notranslate" href="{{ url('/') }}">
+                    <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
+                         alt="{{ basicControl()->site_title }}">
                 </a>
-                <button type="button" class="cmn-btn-close" data-bs-dismiss="offcanvas" aria-label="Close"><i
-                        class="fa-light fa-arrow-right"></i></button>
+                <button type="button" class="cmn-btn-close" data-bs-dismiss="offcanvas" aria-label="@lang('Close')"><i
+                        class="fa-light fa-xmark"></i></button>
             </div>
             <div class="offcanvas-body align-items-center justify-content-between">
                 {!! renderHeaderMenu(getHeaderMenuData()) !!}
-                <ul>
-                    <li class="nav-item">
-                        <a class="nav-link login-btn" href="{{ route('login') }}"><i
-                            class="login-icon fa-light fa-right-to-bracket"></i><span
-                            class="d-md-none">@lang("Login")</span>
-                        </a>
-                    </li>
-                </ul>
-
+                <div class="d-flex d-lg-none flex-wrap gap-2 mt-4 zk-mobile-prefs">
+                    @include(template().'partials.lang_picker', ['zkLangClass' => 'zk-currency', 'zkLangChevron' => true])
+                    @if(count($currencies) > 1)
+                        <label class="zk-currency" title="@lang('Currency')">
+                            <i class="fa-regular fa-coins" aria-hidden="true"></i>
+                            <span class="visually-hidden">@lang('Currency')</span>
+                            <select class="select-currency" aria-label="@lang('Currency')">
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency->code }}" {{ isset($currencyCookie->code) && $currency->code == $currencyCookie->code ? 'selected' : '' }}>{{ $currency->code }}</option>
+                                @endforeach
+                            </select>
+                            <i class="fa-regular fa-chevron-down zk-currency__chev" aria-hidden="true"></i>
+                        </label>
+                    @endif
+                </div>
+                @guest
+                    <div class="d-flex d-lg-none flex-column gap-2 mt-4">
+                        <a class="zk-btn zk-btn--ghost" href="{{ route('login') }}">@lang("Log in")</a>
+                        <a class="zk-btn zk-btn--primary" href="{{ route('register') }}">@lang("Get started")</a>
+                    </div>
+                @endguest
             </div>
         </div>
 
-        @php
-            $currencyRes = request()->cookie('currency');
-            $currencyCookie = json_decode($currencyRes);
-        @endphp
 
         <div class="nav-right">
             <ul class="custom-nav">
-                @if(count($currencies) > 0)
-                <li class="nav-item">
-                    <div class="language-box">
-                        <i class="fa-regular fa-coins"></i>
-                        <select class="form-select select-currency">
-                            @forelse($currencies as $currency)
-                                <option
-                                    value="{{ $currency->code }}" {{ isset($currencyCookie->code) && $currency->code == $currencyCookie->code ? 'selected' : '' }}>
-                                    {{ $currency->code }}
-                                </option>
-                            @empty
-                            @endforelse
+                @if(basicControl()->auto_translate ?? false)
+                <li class="nav-item zk-hide-sm">
+                    @include(template().'partials.lang_picker', ['zkLangClass' => 'zk-currency', 'zkLangChevron' => true])
+                </li>
+                @endif
+                @if(count($currencies) > 1)
+                <li class="nav-item zk-hide-sm">
+                    <label class="zk-currency" title="@lang('Currency')">
+                        <i class="fa-regular fa-coins" aria-hidden="true"></i>
+                        <span class="visually-hidden">@lang('Currency')</span>
+                        <select class="select-currency" aria-label="@lang('Currency')">
+                            @foreach($currencies as $currency)
+                                <option value="{{ $currency->code }}" {{ isset($currencyCookie->code) && $currency->code == $currencyCookie->code ? 'selected' : '' }}>{{ $currency->code }}</option>
+                            @endforeach
                         </select>
-                    </div>
+                        <i class="fa-regular fa-chevron-down zk-currency__chev" aria-hidden="true"></i>
+                    </label>
                 </li>
                 @endif
                 @guest
-                    <li class="nav-item">
-                        <a class="nav-link login-btn" href="{{ route('login') }}"><i
-                                class="login-icon fa-light fa-right-to-bracket"></i><span
-                                class="d-none d-md-block">@lang("Login")</span></a>
+                    <li class="nav-item d-none d-lg-block">
+                        <a class="zk-btn zk-btn--ghost zk-btn--sm" href="{{ route('login') }}">@lang("Log in")</a>
+                    </li>
+                    <li class="nav-item d-none d-lg-block">
+                        <a class="zk-btn zk-btn--primary zk-btn--sm" href="{{ route('register') }}">@lang("Get started")</a>
                     </li>
                 @endguest
                 @auth
-                    <li class="nav-item">
-                        <div class="profile-box">
-                            <div class="profile">
-                                <img
-                                    src="{{ getFile(optional(auth()->user())->image_driver, optional(auth()->user())->image) }}"
-                                    class="img-fluid" alt="@lang("Profile Image")">
-                            </div>
-                            <ul class="user-dropdown">
-                                <li>
-                                    <a href="{{ route('user.dashboard') }}"> <i
-                                            class="fal fa-user"></i> @lang("View Profile")
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('user.ticket.list') }}"> <i
-                                            class="fal fa-user-headset"></i> @lang("Support Ticket") </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('user.profile') }}"> <i
-                                            class="fal fa-user-cog"></i> @lang("My Profile")
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ route('logout') }}"
-                                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="fal fa-sign-out-alt"></i> @lang("Sign Out")
-                                        <form id="logout-form" action="{{ route('logout') }}" method="POST"
-                                              class="d-none">
-                                            @csrf
-                                        </form>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
+                    @php
+                        $zkMe = auth()->user();
+                        $zkInitial = strtoupper(mb_substr($zkMe->username ?: ($zkMe->firstname ?: 'U'), 0, 1));
+                    @endphp
+                    <li class="nav-item d-none d-lg-block">
+                        <a class="zk-btn zk-btn--primary zk-btn--sm" href="{{ route('user.dashboard') }}"><i class="fa-regular fa-gauge"></i> @lang('Dashboard')</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <button type="button" class="zk-avatar" data-bs-toggle="dropdown" aria-expanded="false" aria-label="@lang('Account menu')">
+                            @if($zkMe->image)
+                                <img src="{{ getFile($zkMe->image_driver, $zkMe->image) }}" alt="">
+                            @else
+                                <span>{{ $zkInitial }}</span>
+                            @endif
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end zk-menu">
+                            <li class="zk-menu__head">
+                                <strong>{{ $zkMe->username }}</strong>
+                                <small>@lang('Balance'): <span class="notranslate">{{ currencyPosition($zkMe->balance) }}</span></small>
+                            </li>
+                            <li><a class="dropdown-item" href="{{ route('user.dashboard') }}"><i class="fa-regular fa-gauge"></i> @lang('Dashboard')</a></li>
+                            <li><a class="dropdown-item" href="{{ route('user.order.create') }}"><i class="fa-regular fa-cart-shopping"></i> @lang('Buy services')</a></li>
+                            <li><a class="dropdown-item" href="{{ route('user.add.fund') }}"><i class="fa-regular fa-wallet"></i> @lang('Add funds')</a></li>
+                            <li><a class="dropdown-item" href="{{ route('user.order.index') }}"><i class="fa-regular fa-list-check"></i> @lang('My orders')</a></li>
+                            <li><a class="dropdown-item" href="{{ route('user.ticket.list') }}"><i class="fa-regular fa-headset"></i> @lang('Support')</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ route('logout') }}" method="POST" class="m-0">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item zk-menu__out"><i class="fa-regular fa-right-from-bracket"></i> @lang('Sign out')</button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                 @endauth
             </ul>
         </div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
+                aria-controls="offcanvasNavbar" aria-label="@lang('Open menu')">
+            <i class="fa-light fa-bars"></i>
+        </button>
     </div>
 </nav>
 
@@ -107,7 +123,8 @@
         "use strict";
         $(document).ready(function () {
             $('.select-currency').on('change', function () {
-                let currency = $('.select-currency').val();
+                let currency = $(this).val();
+                $('.select-currency').val(currency);
                 $.ajax({
                     url: "{{ route('set.currency') }}",
                     type: 'POST',

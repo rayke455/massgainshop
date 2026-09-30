@@ -1,7 +1,7 @@
 <nav class="navbar fixed-top navbar-expand-lg dark-voilet-header">
     <div class="container">
         <a class="navbar-brand logo" href="{{ url('/') }}"><img
-                src="{{ getFile(basicControl()->logo_driver, basicControl()->logo) }}" alt="Logo"></a>
+                src="{{ getFile(basicControl()->admin_dark_mode_logo_driver, basicControl()->admin_dark_mode_logo) }}" alt="Logo"></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
                 aria-controls="offcanvasNavbar">
             <i class="fa-light fa-list"></i>
@@ -9,7 +9,7 @@
         <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbar">
             <div class="offcanvas-header">
                 <a class="navbar-brand" href="{{ url('/') }}">
-                    <img class="logo" src="{{ getFile(basicControl()->logo_driver, basicControl()->logo) }}"
+                    <img class="logo" src="{{ getFile(basicControl()->admin_dark_mode_logo_driver, basicControl()->admin_dark_mode_logo) }}"
                          alt="Logo">
                 </a>
                 <button type="button" class="cmn-btn-close" data-bs-dismiss="offcanvas" aria-label="Close"><i

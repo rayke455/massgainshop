@@ -19,6 +19,42 @@
             </div>
         </div>
 
+        @if($method->code === 'mpesa')
+            <div class="card mb-4">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h4 class="card-header-title mb-0"><i class="bi-phone me-1"></i> @lang('M-Pesa setup check')
+                        <span class="badge {{ $method->environment == 'live' ? 'bg-success' : 'bg-warning text-dark' }} ms-2">{{ $method->environment == 'live' ? __('LIVE') : __('SANDBOX') }}</span></h4>
+                    <form action="{{ route('admin.payment.method.mpesa.test', $method->id) }}" method="post">
+                        @csrf
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi-activity me-1"></i> @lang('Test M-Pesa connection')</button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    @if(session('mpesa_findings'))
+                        <ul class="list-unstyled mb-4">
+                            @foreach(session('mpesa_findings') as [$level, $message])
+                                <li class="alert alert-soft-{{ $level }} py-2 mb-2">
+                                    <i class="bi-{{ ['success' => 'check-circle', 'warning' => 'exclamation-triangle', 'danger' => 'x-circle'][$level] ?? 'info-circle' }} me-1"></i>
+                                    {{ $message }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                    <p class="mb-2"><strong>@lang('To receive real STK pushes:')</strong></p>
+                    <ol class="mb-2">
+                        <li>@lang('Get a Paybill or Till number from Safaricom (M-Pesa for Business).')</li>
+                        <li>@lang('On developer.safaricom.co.ke create an app with "M-Pesa Express", then click "Go Live" and link your Paybill/Till.')</li>
+                        <li>@lang('Paste the LIVE Consumer Key, Consumer Secret, your Paybill/Till as Short code and the Passkey Safaricom emails you.')</li>
+                        <li>@lang('Set Mode to "Live (production)" below and click Save. Then click "Test M-Pesa connection".')</li>
+                    </ol>
+                    <p class="mb-0 text-muted small">
+                        @lang('Confirmation URL (set automatically):') <code>{{ route('mpesa.webhook') }}</code>.
+                        @lang('Sandbox/test mode never sends prompts to real phones.')
+                    </p>
+                </div>
+            </div>
+        @endif
+
         <div class="row payment_method">
             <div class="col-lg-12">
                 <div class="d-grid gap-3 gap-lg-5">
@@ -99,6 +135,19 @@
                                                         <div class="invalid-feedback">
                                                             @error($key) @lang($message) @enderror
                                                         </div>
+                                                        @if($method->code === 'mpesa')
+                                                            @php
+                                                                $zkHelp = [
+                                                                    'consumer_key' => __('From your Daraja app (use the LIVE app for real payments).'),
+                                                                    'consumer_secret' => __('From the same Daraja app.'),
+                                                                    'short_code' => __('Paybill number, or for a Till: the Store/Head-office number Safaricom gave you.'),
+                                                                    'pass_key' => __('The Lipa na M-Pesa Online passkey Safaricom emails after Go-Live.'),
+                                                                    'till_number' => __('Only if customers pay to a Till (Buy Goods). Leave empty for a Paybill.'),
+                                                                    'webhook' => __('Leave empty. It is set automatically to') . ' ' . route('mpesa.webhook'),
+                                                                ];
+                                                            @endphp
+                                                            <small class="text-muted">{{ $zkHelp[$key] ?? '' }}</small>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -209,20 +258,16 @@
                                                     <div class="flex-grow-1">
                                                         <div class="row align-items-center">
                                                             <div class="col">
-                                                                <span
-                                                                    class="d-block text-dark">@lang("Test Environment")</span>
-                                                                <p class="fs-5 text-body mb-0">@lang("To test your payment gateway, set up a sandbox environment.")</p>
+                                                                <span class="d-block text-dark">@lang("Mode")</span>
+                                                                <p class="fs-5 text-body mb-0">@lang("Live takes real payments. Sandbox is only for testing with test keys: no real money, and M-Pesa sends no prompt to real phones.")</p>
                                                             </div>
                                                             <div class="col-auto">
-                                                                <div class="form-check form-switch">
-                                                                    <input type="hidden" name="test_environment"
-                                                                           value="live">
-                                                                    <input type="checkbox" class="form-check-input"
-                                                                           name="test_environment"
-                                                                           id="testEnvironmentSwitch"
-                                                                           value="test" {{ $method->environment == 'test' ? 'checked' : '' }}>
-                                                                    <label class="form-check-label"
-                                                                           for="testEnvironmentSwitch"></label>
+                                                                @php $zkEnv = old('test_environment', $method->environment == 'test' ? 'test' : 'live'); @endphp
+                                                                <div class="btn-group" role="group" aria-label="@lang('Mode')">
+                                                                    <input type="radio" class="btn-check" name="test_environment" id="envLive" value="live" {{ $zkEnv == 'live' ? 'checked' : '' }}>
+                                                                    <label class="btn btn-outline-success btn-sm" for="envLive"><i class="bi-lightning-charge me-1"></i>@lang('Live (production)')</label>
+                                                                    <input type="radio" class="btn-check" name="test_environment" id="envTest" value="test" {{ $zkEnv == 'test' ? 'checked' : '' }}>
+                                                                    <label class="btn btn-outline-secondary btn-sm" for="envTest"><i class="bi-bug me-1"></i>@lang('Sandbox (testing)')</label>
                                                                 </div>
                                                                 <span class="invalid-feedback">
                                                                     @error('test_environment') @lang($message) @enderror

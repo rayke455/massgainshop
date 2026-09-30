@@ -1,448 +1,268 @@
 @extends(template().'layouts.user')
 @section('title',trans('Add Fund'))
 @section('content')
+    @php
+        $zkCurrencyModel = auth()->user()->currency ? \App\Models\Currency::where('code', auth()->user()->currency)->first() : null;
+        $zkBalance = $zkCurrencyModel
+            ? currencyPositionBySelectedCurrency(auth()->user()->balance * $zkCurrencyModel->conversion_rate, auth()->user()->currency)
+            : currencyPosition(auth()->user()->balance);
+    @endphp
     <div class="dashboard-wrapper payment-section">
         <div class="container">
-            <div class="breadcrumb-area">
-                <h4 class="title">@lang("add fund")</h4>
-                <ul class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url('/') }}"><i
-                                class="fa-light fa-house"></i>
-                            @lang("Home")</a>
-                    </li>
-                    <li class="breadcrumb-item"><a href="{{ route('user.dashboard') }}">
-                            @lang("Dashboard")</a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">@lang("add fund")</li>
-                </ul>
+            <div class="zk-welcome">
+                <div>
+                    <h1 class="zk-welcome__title">@lang('Add funds')</h1>
+                    <p class="zk-welcome__sub">@lang('Current balance'): <strong class="notranslate">{{ $zkBalance }}</strong></p>
+                </div>
+                <a href="{{ route('user.fund.index') }}" class="zk-btn zk-btn--ghost">
+                    <i class="fa-regular fa-receipt"></i> @lang('Deposit history')
+                </a>
             </div>
-            <form action="{{ route('user.payment.request') }}" method="post" enctype="multipart/form-data">
+
+            @if(request()->filled('amount'))
+                <div class="alert alert-info d-flex align-items-center gap-2" role="status">
+                    <i class="fa-regular fa-circle-info"></i>
+                    <span>@lang('Top up to finish your order. We filled in the missing amount — your order details are saved.')
+                        <a href="{{ route('user.order.create') }}">@lang('Back to order')</a></span>
+                </div>
+            @endif
+            <form action="{{ route('user.payment.request') }}" method="post" enctype="multipart/form-data" id="zkFundForm">
                 @csrf
                 <div class="row g-4">
-                    <div class="col-lg-7 col-md-12">
-                        <div class="card">
+                    <div class="col-lg-7">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4><span class="zk-step-no">1</span>@lang('How much?')</h4>
+                            </div>
                             <div class="card-body">
-                                <h4 class="mb-15 ms-1">@lang("Select payment option to add balance to your funds.")</h4>
-                                <div class="payment-section">
-                                    <ul class="payment-container-list">
-                                        @forelse($gateways as $key => $gateway)
-                                            <li class="item">
-                                                <input class="form-check-input select-payment-method" type="radio"
-                                                       name="gateway_id"
-                                                       id="{{ $gateway->name }}"
-                                                       value="{{ $gateway->id }}" {{ $key == 0 ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="{{ $gateway->name }}">
-                                                    <div class="image-area">
-                                                        <img src="{{ getFile($gateway->driver, $gateway->image) }}"
-                                                             alt="Gateway Image">
-                                                    </div>
-                                                    <div class="content-area">
-                                                        <h5>@lang($gateway->name)</h5>
-                                                        <span>
-                                                        @lang($gateway->description)
-                                                    </span>
-                                                    </div>
-                                                </label>
-                                            </li>
-                                        @empty
-                                        @endforelse
-                                    </ul>
+                                <label class="form-label" for="amount">@lang('Amount')</label>
+                                <div class="zk-amount">
+                                    <input type="number" class="form-control" name="amount" id="amount"
+                                           placeholder="0.00" step="0.01" min="0" inputmode="decimal" autocomplete="off"/>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="zk-chips" role="group" aria-label="@lang('Quick amounts')">
+                                    @foreach([5, 10, 25, 50, 100] as $preset)
+                                        <button type="button" class="zk-chip" data-amount="{{ $preset }}">{{ $preset }}</button>
+                                    @endforeach
+                                </div>
+
+                                <div class="row g-3 mt-1">
+                                    <div class="col-md-6 fiat-currency">
+                                        <label class="form-label" for="supported_currency">@lang('Pay in')</label>
+                                        <select class="form-select" name="supported_currency" id="supported_currency">
+                                            <option value="" disabled selected>@lang('Select currency')</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 crypto-currency"></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-lg-5 col-md-12 side-bar">
-                        <div class="deposit-info-box d-none d-lg-block">
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <div class="row g-2">
-                                        <div class="col-md-12">
-                                            <label class="form-label" for="amount">@lang("Enter Amount")</label>
-                                            <input type="number" class="form-control" name="amount"
-                                                   id="amount"
-                                                   placeholder="0.00" step="0.0000000001" autocomplete="off"/>
-                                            <div class="invalid-feedback"></div>
-                                        </div>
 
-                                        <div class="col-md-12 fiat-currency">
-                                            <label class="form-label">@lang("Supported Currency")</label>
-                                            <select class="cmn-select2" name="supported_currency" id="supported_currency">
-                                                <option value="" disabled selected>@lang("Select Currency")</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-12 crypto-currency">
-
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h4><span class="zk-step-no">2</span>@lang('Payment method')</h4>
                             </div>
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="transfer-details-section">
-                                        <h5 class="title">@lang("Deposit Summery")</h5>
-                                        <ul class="transfer-list show-deposit-summery">
-
-                                        </ul>
-                                        <div class="form-check ms-3">
-                                            <input class="form-check-input agree-checked" type="checkbox" value=""
-                                                   id="Yes, i have confirmed the order!">
-                                            <label class="form-check-label" for="Yes, i have confirmed the order!">
-                                                @lang("I agree to the") <a href="{{ url('terms-and-conditions') }}"
-                                                                           class="link">@lang("terms and conditions.")</a>
-                                            </label>
+                            <div class="card-body">
+                                <div class="zk-gateways">
+                                    @forelse($gateways as $key => $gateway)
+                                        <label class="zk-gateway">
+                                            <input class="select-payment-method" type="radio" name="gateway_id"
+                                                   value="{{ $gateway->id }}" {{ $key == 0 ? 'checked' : '' }}>
+                                            <span class="zk-gateway__box">
+                                                <img src="{{ getFile($gateway->driver, $gateway->image) }}" alt="">
+                                                <span class="zk-gateway__text">
+                                                    <strong>@lang($gateway->name)</strong>
+                                                    @if($gateway->description)
+                                                        <small>@lang(\Illuminate\Support\Str::limit(strip_tags($gateway->description), 70))</small>
+                                                    @endif
+                                                </span>
+                                                <i class="fa-solid fa-circle-check zk-gateway__tick"></i>
+                                            </span>
+                                        </label>
+                                    @empty
+                                        <div class="zk-empty">
+                                            <span class="zk-empty__icon"><i class="fa-regular fa-credit-card"></i></span>
+                                            <h3>@lang('No payment methods yet')</h3>
+                                            <p>@lang('Please contact support to add funds.')</p>
                                         </div>
-                                        <div class="payment-btn-group">
-                                            <a href="{{ route('user.dashboard') }}" class="delete-btn rounded-1 w-50">
-                                                @lang("cancel this deposit")</a>
-                                            <button type="submit" class="cmn-btn rounded-1">@lang("confirm and continue")
-                                            </button>
-                                        </div>
-                                    </div>
+                                    @endforelse
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="paymentModal">
-                        <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-                             aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h4 class="modal-title" id="staticBackdropLabel">@lang('Payment Info')</h4>
-                                        <button type="button" class="cmn-btn-close text-white" data-bs-dismiss="modal" aria-label="Close">
-                                            <i class="fa-light fa-xmark"></i>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body" id="paymentModalBody">
-
-
-                                    </div>
+                    <div class="col-lg-5">
+                        <div class="card zk-sticky">
+                            <div class="card-header"><h4>@lang('Summary')</h4></div>
+                            <div class="card-body transfer-details-section">
+                                <ul class="zk-summary show-deposit-summery">
+                                    <li class="zk-summary__empty">@lang('Enter an amount to see the total.')</li>
+                                </ul>
+                                <div class="form-check mt-3">
+                                    <input class="form-check-input agree-checked" type="checkbox" id="zkAgree">
+                                    <label class="form-check-label" for="zkAgree">
+                                        @lang('I agree to the') <a href="{{ url('terms-and-conditions') }}" target="_blank">@lang('terms and conditions')</a>
+                                    </label>
                                 </div>
+                                <div class="payment-btn-group mt-3">
+                                    <button type="submit" class="zk-btn zk-btn--primary zk-btn--lg w-100 zk-pay-btn" disabled>
+                                        @lang('Continue to payment') <i class="fa-regular fa-arrow-right"></i>
+                                    </button>
+                                    <a href="{{ route('user.dashboard') }}" class="zk-cancel-link">@lang('Cancel')</a>
+                                </div>
+                                <p class="zk-secure"><i class="fa-regular fa-lock"></i> @lang('Payments are processed securely by the provider.')</p>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </form>
         </div>
     </div>
 @endsection
 
-
-@push("style")
-    <style>
-        .condition_link, .condition_link:hover{
-            color: var(--primary);
-        }
-        .form-control{
-            background-color: var(--bg-color1);
-            border: 1px solid var(--border-color1);
-        }
-
-        .form-control:focus{
-            background-color: var(--bg-color1);
-            border: 1px solid var(--primary);
-        }
-    </style>
-@endpush
-
-
 @push('script')
     <script>
         'use strict';
         $(document).ready(function () {
+            let selectedGateway = $('.select-payment-method:checked').val() || '';
+            const amountField = $('#amount');
 
-            $('.crypto-select').select2();
-
-            let amountStatus = false;
-            let selectedGateway = "";
-
-            function clearMessage(fieldId) {
-                $(fieldId).removeClass('is-valid')
-                $(fieldId).removeClass('is-invalid')
-                $(fieldId).closest('div').find(".invalid-feedback").html('');
-                $(fieldId).closest('div').find(".is-valid").html('');
+            // Coming from "Not enough balance" on the order page: pre-fill the missing amount.
+            const presetAmount = parseFloat(new URLSearchParams(window.location.search).get('amount'));
+            if (presetAmount > 0) {
+                amountField.val(presetAmount);
             }
 
-            let isGatewayChecked = $(".select-payment-method").is(":checked");
-            if (isGatewayChecked) {
-                selectedGateway = $('.select-payment-method').val();
+            function clearMessage(field) {
+                field.removeClass('is-valid is-invalid');
+                field.closest('div').find('.invalid-feedback').html('');
+            }
+
+            function resetSummary(message) {
+                $('.show-deposit-summery').html(`<li class="zk-summary__empty">${message}</li>`);
+                refreshPayButton(false);
+            }
+
+            let amountOk = false;
+            function refreshPayButton(ok) {
+                if (typeof ok === 'boolean') amountOk = ok;
+                $('.zk-pay-btn').prop('disabled', !(amountOk && $('.agree-checked').is(':checked') && selectedGateway));
+            }
+
+            if (selectedGateway) {
                 supportCurrency(selectedGateway);
             }
 
-
-            $(document).on('click', '.select-payment-method', function () {
-                let id = this.id;
-                $('#paymentModalBody').html('');
-
+            // Switching method keeps the amount the user typed.
+            $(document).on('change', '.select-payment-method', function () {
                 selectedGateway = $(this).val();
-                let updatedWidth = window.innerWidth;
-                window.addEventListener('resize', () => {
-                    updatedWidth = window.innerWidth;
-                });
-
-                let html = `
-                      <div class="card mb-3">
-                                <div class="card-body">
-                                    <div class="row g-2">
-                                        <div class="col-md-12">
-                                            <label class="form-label" for="amount">@lang("Enter Amount")</label>
-                                            <input type="number" class="form-control" name="amount"
-                                                   id="amount"
-                                                   placeholder="0.00" step="0.0000000001" autocomplete="off"/>
-                                            <div class="invalid-feedback"></div>
-                                        </div>
-
-                                        <div class="col-md-12 fiat-currency">
-                                            <label class="form-label">@lang("Supported Currency")</label>
-                                            <select class="cmn-select2" name="supported_currency" id="supported_currency">
-                                                <option value="" disabled selected>@lang("Select Currency")</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-12 crypto-currency">
-
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="transfer-details-section">
-                                        <h5 class="title">@lang("Deposit Summery")</h5>
-                                        <ul class="transfer-list show-deposit-summery">
-
-                                        </ul>
-                                        <div class="form-check ms-3">
-                                            <input class="form-check-input agree-checked" type="checkbox" value=""
-                                                   id="Yes, i have confirmed the order!">
-                                            <label class="form-check-label" for="Yes, i have confirmed the order!">
-                                                @lang("I agree to the") <a href="{{ url('terms-and-conditions') }}"
-                                                                           class="link">@lang("terms and conditions.")</a>
-                                            </label>
-                                        </div>
-                                        <div class="payment-btn-group">
-                                            <a href="{{ route('user.dashboard') }}" class="delete-btn rounded-1 w-50">
-                                                @lang("cancel this deposit")</a>
-                                            <button type="submit" class="cmn-btn rounded-1">@lang("confirm and continue")
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-`;
-
-                if (updatedWidth <= 991) {
-                    $('.side-bar').html('');
-                    $('#paymentModalBody').html(html);
-                    let paymentModal = new bootstrap.Modal(document.getElementById('staticBackdrop'));
-                    paymentModal.show();
-                } else {
-                    $('.side-bar').html(html);
-                }
-
-                $('#supported_currency').select2({
-                    placeholder: "@lang('Select Currency')",
-                    width: '100%'
-                });
-
                 supportCurrency(selectedGateway);
             });
 
-            function supportCurrency(selectedGateway) {
-                if (!selectedGateway) {
-                    console.error('Selected Gateway is undefined or null.');
-                    return;
-                }
+            $(document).on('click', '.zk-chip', function () {
+                $('.zk-chip').removeClass('active');
+                $(this).addClass('active');
+                amountField.val($(this).data('amount')).trigger('input');
+            });
 
+            function supportCurrency(gatewayId) {
                 $('#supported_currency').empty();
-                $.ajaxSetup({
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    }
-                });
-
                 $.ajax({
                     url: "{{ route('user.supported.currency') }}",
-                    data: {gateway: selectedGateway},
+                    data: {gateway: gatewayId},
                     type: "GET",
+                    headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
                     success: function (response) {
-                        let amountField = $('#amount');
-                        if (response.data == "") {
-                            let markup = `<option value="USD">USD</option>`;
-                            $('#supported_currency').append(markup);
+                        const minAmount = parseFloat(response.min_amount) || 0;
+                        if (!amountField.val() || parseFloat(amountField.val()) < minAmount) {
+                            amountField.val(Math.max(minAmount, 10));
                         }
-
-                        let markup = '<option value="">Selected Currency</option>';
-                        $('#supported_currency').append(markup);
-
-                        if (response.currencyType == 1) {
-                            $('.fiat-currency').show();
-                            $('.crypto-currency').hide();
-                            $(response.data).each(function (index, value) {
-                                let selected = index == 0 ? ' selected' : '';
-                                let markup = `<option value="${value}"${selected}>${value}</option>`;
-                                $('#supported_currency').append(markup);
-                            });
-
-                            if (response.min_amount < 10) {
-                                amountField.val(10);
-                                $(amountField).addClass('is-valid');
-                            } else {
-                                amountField.val(response.min_amount);
-                                $(amountField).addClass('is-valid');
-                            }
-                            let amount = $('#amount').val();
-                            checkAmount(amount, response.currency, selectedGateway)
-                        } else {
-                            let markup = `<option value="USD">USD</option>`;
-                            $('#supported_currency').append(markup);
-                        }
-
 
                         if (response.currencyType == 0) {
                             $('.fiat-currency').hide();
-                            $('.crypto-currency').show();
-                            let markupCrypto = ` <label class="form-label">@lang("Select Crypto Currency")</label>
-                                        <select class="form-control crypto-select"
-                                                name="supported_crypto_currency"
-                                                id="supported_crypto_currency">
-                                              <option value="">@lang("Selected Crypto Currency")</option>
-                                        </select>`;
-                            $('.crypto-currency').empty().append(markupCrypto);
-
+                            $('.crypto-currency').show().html(`
+                                <label class="form-label" for="supported_crypto_currency">@lang("Pay with")</label>
+                                <select class="form-select" name="supported_crypto_currency" id="supported_crypto_currency"></select>`);
                             $(response.data).each(function (index, value) {
-                                let selected = index == 0 ? ' selected' : '';
-                                let markupOption = `<option value="${value}" ${selected}>${value}</option>`;
-                                $('#supported_crypto_currency').append(markupOption);
+                                $('#supported_crypto_currency').append(`<option value="${value}" ${index == 0 ? 'selected' : ''}>${value}</option>`);
                             });
-
-                            $('#supported_crypto_currency').select2({
-                                placeholder: "@lang('Select Crypto Currency')",
+                            checkAmount(amountField.val(), response.currency, gatewayId, $('#supported_crypto_currency').val());
+                        } else {
+                            $('.crypto-currency').hide().empty();
+                            $('.fiat-currency').show();
+                            const list = (response.data && response.data.length) ? response.data : ['USD'];
+                            $(list).each(function (index, value) {
+                                $('#supported_currency').append(`<option value="${value}" ${index == 0 ? 'selected' : ''}>${value}</option>`);
                             });
-
-                            $('#amount').val(response.min_amount);
-                            $('#amount').addClass('is-valid');
-                            let amount = $('#amount').val();
-                            checkAmount(amount, response.currency, selectedGateway, response.currency)
+                            checkAmount(amountField.val(), $('#supported_currency').val(), gatewayId);
                         }
                     },
-                    error: function (error) {
-                        console.error('AJAX Error:', error);
+                    error: function () {
+                        resetSummary("@lang('Could not load this payment method. Please try another one.')");
                     }
                 });
             }
 
-            $(document).on('change, input', "#amount, #supported_currency, .select-payment-method, #supported_crypto_currency", function (e) {
-
-                let amount = $('#amount').val();
-                let selectedCurrency = $('#supported_currency').val();
-                let selectedCryptoCurrency = $('#supported_crypto_currency').val();
-                let currency_type = 1;
-
+            $(document).on('input change', '#amount, #supported_currency, #supported_crypto_currency', function () {
+                let amount = amountField.val();
+                if (this.id === 'amount') {
+                    $('.zk-chip').removeClass('active');
+                    $(`.zk-chip[data-amount="${parseFloat(amount)}"]`).addClass('active');
+                }
                 if (!isNaN(amount) && amount > 0) {
-                    let fraction = amount.split('.')[1];
-                    let limit = currency_type == 0 ? 8 : 2;
-
-                    if (fraction && fraction.length > limit) {
-                        amount = (Math.floor(amount * Math.pow(10, limit)) / Math.pow(10, limit)).toFixed(limit);
-                        $('#amount').val(amount);
+                    const parts = String(amount).split('.');
+                    if (parts[1] && parts[1].length > 2) {
+                        amount = (Math.floor(amount * 100) / 100).toFixed(2);
+                        amountField.val(amount);
                     }
-                    checkAmount(amount, selectedCurrency, selectedGateway, selectedCryptoCurrency)
+                    checkAmount(amount, $('#supported_currency').val(), selectedGateway, $('#supported_crypto_currency').val());
                 } else {
-                    let amountField = $('#amount');
-                    clearMessage(amountField)
+                    clearMessage(amountField);
+                    resetSummary("@lang('Enter an amount to see the total.')");
                 }
             });
 
-            function checkAmount(amount, selectedCurrency, selectGateway, selectedCryptoCurrency = null) {
+            function checkAmount(amount, selectedCurrency, gatewayId, selectedCryptoCurrency = null) {
                 $.ajax({
                     method: "GET",
                     url: "{{ route('user.deposit.checkAmount') }}",
                     dataType: "json",
                     data: {
-                        'amount': amount,
-                        'selected_currency': selectedCurrency,
-                        'select_gateway': selectGateway,
-                        'selectedCryptoCurrency': selectedCryptoCurrency,
+                        amount: amount,
+                        selected_currency: selectedCurrency,
+                        select_gateway: gatewayId,
+                        selectedCryptoCurrency: selectedCryptoCurrency,
                     }
                 }).done(function (response) {
-                    let amountField = $('#amount');
+                    clearMessage(amountField);
                     if (response.status) {
-
-                        clearMessage(amountField);
-                        $(amountField).addClass('is-valid');
-                        $(amountField).closest('div').find(".valid-feedback").html(response.message);
-                        $('.cmn-btn').removeClass('d-none').addClass('d-block');
-                        $('.form-check').removeClass('d-none').addClass('d-block');
-                        amountStatus = true;
-                        let base_currency = "{{ basicControl()->base_currency }}"
-                        showSummery(response, base_currency);
+                        amountField.addClass('is-valid');
+                        showSummary(response, "{{ basicControl()->base_currency }}");
+                        refreshPayButton(true);
                     } else {
-                        amountStatus = false;
-                        clearMessage(amountField);
-                        $(amountField).addClass('is-invalid');
-                        $(amountField).closest('div').find(".invalid-feedback").html(response.message);
+                        amountField.addClass('is-invalid');
+                        amountField.closest('div').find('.invalid-feedback').html(response.message);
+                        resetSummary(response.message);
                     }
                 });
             }
 
-            function showSummery(response, currency) {
-                let formattedAmount = response.amount.toFixed(2);
-                let formattedChargeAmount = response.charge.toFixed(2);
-                let formattedPayableAmount = response.payable_amount.toFixed(2);
-
-                let updatedWidth = window.innerWidth;
-                window.addEventListener('resize', () => {
-                    updatedWidth = window.innerWidth;
-                });
-
-                let depositSummery = `
-                                    <li class="item">
-                                        <span>@lang("Amount")</span>
-                                        <h5>${formattedAmount} ${response.currency}</h5>
-                                    </li>
-                                    <li class="item">
-                                        <span>@lang("Charge")</span>
-                                        <span>${formattedChargeAmount} ${response.currency}</span>
-                                    </li>
-                                    <li class="item">
-                                        <h6><a href="javascript:void(0)">@lang("Payable Amount")</a></h6>
-                                        <span>${formattedPayableAmount} ${response.currency}</span>
-                                    </li>
-                                    <li class="item">
-                                        <span>@lang("Exchange Rate")</span>
-                                        <span> 1 ${currency}
-                                                            <i class="fa-light fa-arrow-right-arrow-left fa-sm ms-1 me-1"></i>
-                                                        ${response.conversion_rate} ${response.currency}
-                                        </span>
-                                    </li>
-                                    <li class="item">
-                                        <span>@lang("Payable Amount") <sub>(@lang("In Base Currency"))</sub></span>
-                                        <h5>${response.amount_in_base_currency} ${currency}</h5>
-                                    </li>`;
-                $('.show-deposit-summery').html(depositSummery);
+            function showSummary(response, baseCurrency) {
+                const fmt = n => Number(n).toFixed(2);
+                let rows = `
+                    <li><span>@lang("Amount")</span><span>${fmt(response.amount)} ${response.currency}</span></li>
+                    <li><span>@lang("Fee")</span><span>${fmt(response.charge)} ${response.currency}</span></li>`;
+                if (response.currency !== baseCurrency) {
+                    rows += `<li><span>@lang("Rate")</span><span>1 ${baseCurrency} = ${response.conversion_rate} ${response.currency}</span></li>`;
+                }
+                rows += `
+                    <li class="zk-summary__total"><span>@lang("You pay")</span><strong>${fmt(response.payable_amount)} ${response.currency}</strong></li>
+                    <li class="zk-summary__credit"><span>@lang("Added to balance")</span><span>${response.amount_in_base_currency} ${baseCurrency}</span></li>`;
+                $('.show-deposit-summery').html(rows);
             }
+
+            $(document).on('change', '.agree-checked', () => refreshPayButton());
         });
-
-
-        isAgree();
-
-        $(document).on('click', '.agree-checked', function () {
-            isAgree();
-        });
-
-        function isAgree() {
-            let isAgreeChecked = $(".agree-checked").is(":checked");
-            $('.payment-btn-group .cmn-btn').attr('disabled', !isAgreeChecked);
-        }
     </script>
 @endpush
-
-
-
-
-
-

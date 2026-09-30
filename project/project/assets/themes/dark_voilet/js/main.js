@@ -1,9 +1,7 @@
 
 // Preloader area
-const preloader = document.getElementById("preloader");
-const preloaderFunction = () => {
-    preloader.style.display = "none";
-};
+// Preloader removed for faster page loads; kept as a no-op for old onload handlers.
+const preloaderFunction = () => {};
 
 // toggleSideMenu start
 const toggleSideMenu = () => {

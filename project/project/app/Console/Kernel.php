@@ -16,14 +16,18 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('update-provider:status')->everyTenMinutes();
-        $schedule->command('update-refill:status')->everyTenMinutes();
+        $schedule->command('update-provider:status')->everyTenMinutes()->withoutOverlapping();
+        $schedule->command('update-refill:status')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('draft-mass-order:delete')->daily();
         $schedule->command('app:auto-currency-update')->daily();
         $schedule->command('app:check-expired-domain')->daily();
         $schedule->command('app:gateway-currency-update')->daily();
         $schedule->command('app:service-price-update')->hourly();
-        $schedule->command('model:prune')->days(2);
+        $schedule->command('model:prune')->dailyAt('03:30');
+        $schedule->command('app:check-provider-balance')->hourly()->withoutOverlapping();
+
+        // Heartbeat: the admin dashboard warns when this stops updating (cron not set up / stopped).
+        $schedule->call(fn() => \Illuminate\Support\Facades\Cache::forever('zk_cron_last_run', now()->timestamp))->everyMinute();
     }
 
     /**

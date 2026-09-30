@@ -20,6 +20,18 @@ class LanguageController extends Controller
         return view('admin.language.list', compact('languages'));
     }
 
+    public function toggleAutoTranslate(Request $request)
+    {
+        $basic = \App\Models\BasicControl::firstOrCreate();
+        $basic->auto_translate = $request->boolean('enabled') ? 1 : 0;
+        $basic->save();
+        \Cache::forget('ConfigureSetting');
+
+        return back()->with('success', $basic->auto_translate
+            ? 'Auto-translate is on. Visitors will see the site in their language.'
+            : 'Auto-translate is off. Everyone sees the site in English.');
+    }
+
     public function create()
     {
         $shortNames = config('languages.langCode');

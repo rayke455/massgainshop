@@ -33,7 +33,9 @@ class ServiceStoreRequest extends FormRequest
             'api_provider_id' => 'exclude_if:manual_api,0|exists:api_providers,id',
             'api_service_id' => 'exclude_if:manual_api,0|numeric|not_in:0',
             'refill' => 'required|numeric|in:1,2,3',
-            'description' => 'required|string|max:2000',
+            'description' => 'nullable|string|max:2000',
+            // Optional own cost per 1k for manual services (API services read it from the provider).
+            'cost' => 'nullable|numeric|min:0',
         ];
     }
 }

@@ -71,11 +71,11 @@
                                                 <td data-label="Price">
                                                     @if(auth()->user()->currency)
                                                         <span>
-                                                    {{ currencyPositionBySelectedCurrency($draft->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($draft->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 </span>
                                                     @else
                                                         <span>
-                                                    {{ currencyPosition($draft->price) }}
+                                                    <span class="notranslate">{{ currencyPosition($draft->price) }}</span>
                                                 </span>
                                                     @endif
                                                 </td>

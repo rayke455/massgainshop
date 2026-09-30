@@ -1,30 +1,23 @@
-<!-- Achievement section start -->
-<section class="achivement-section">
+<!-- Achievement section start: stat cards (SMMGen-style row under the hero) -->
+<section class="zk-section zk-section--tight zk-statcards-wrap">
     <div class="container">
-        <div class="row g-5 align-items-center">
-            <div class="col-lg-6">
-                <div class="row g-4">
-                    @forelse($achievement['multiple'] as $item)
-                        <div class="col-md-6 cmn-box3-item">
-                            <div class="cmn-box3">
-                                <div class="icon-area">
-                                    <i class="{{ @$item['media']->icon }}"></i>
-                                </div>
-                                <div class="content-area">
-                                    <h3><span class="achivement-counter">{{ @$item['count'] }}</span>+</h3>
-                                    <h5>@lang(@$item['title'])</h5>
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                    @endforelse
+        @if(@$achievement['single']['heading'])
+            <div class="zk-head zk-reveal" style="margin-bottom: 36px">
+                <h2 class="zk-title">{!! zkHighlight(__(@$achievement['single']['heading'])) !!}</h2>
+                @if(@$achievement['single']['description'])
+                    <p class="zk-lead">@lang(strip_tags(@$achievement['single']['description']))</p>
+                @endif
+            </div>
+        @endif
+        <div class="zk-statcards">
+            @forelse($achievement['multiple'] as $item)
+                <div class="zk-statcard zk-reveal">
+                    <span class="zk-statcard__icon"><i class="{{ @$item['media']->icon }}"></i></span>
+                    <strong><span class="achivement-counter">{{ @$item['count'] }}</span>+</strong>
+                    <span>@lang(@$item['title'])</span>
                 </div>
-            </div>
-            <div class="col-lg-6">
-                <span class="section-subtitle">@lang(@$achievement['single']['title']) </span>
-                <h3 class="section-title">@lang(@$achievement['single']['heading'])</h3>
-                <p class="cmn-para-text">@lang(strip_tags(@$achievement['single']['description']))</p>
-            </div>
+            @empty
+            @endforelse
         </div>
     </div>
 </section>

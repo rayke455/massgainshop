@@ -3,47 +3,24 @@
 namespace App\Traits;
 
 use App\Models\Currency;
-use Illuminate\Support\Facades\Http;
+use App\Services\MarketRateService;
 
 trait MultiCurrencyAutoUpdate
 {
-    protected function getCurrencyUpdateData($currencyData)
+    /**
+     * Update the given currencies to live market rates (free sources, no API key needed).
+     * Returns the number of currencies updated; 0 means the market feed was unreachable.
+     */
+    protected function getCurrencyUpdateData($currencyData, bool $fresh = true)
     {
-        $endpoint = 'live';
-        $source = basicControl()->base_currency;
-        $currency_layer_url = "http://api.currencylayer.com";
-        $currency_layer_access_key = basicControl()->currency_layer_access_key;
+        $codes = collect($currencyData)->pluck('code')->all();
+        $market = app(MarketRateService::class)->rates($codes, $fresh);
 
-        $currencyCode = [];
-        foreach ($currencyData as $currency) {
-            $currencyCode[] = $currency->code;
+        $updated = 0;
+        foreach ($market['rates'] as $code => $rate) {
+            $updated += Currency::where('code', $code)->update(['conversion_rate' => $rate]);
         }
 
-        $currencyCode = array_unique($currencyCode);
-        $currencies = implode(',', $currencyCode);
-
-        $CurrencyAPIUrl = "$currency_layer_url/$endpoint?access_key=$currency_layer_access_key&source=$source&currencies=$currencies";
-
-        $response = Http::acceptJson()
-            ->get($CurrencyAPIUrl);
-
-        $responseData = $response->json();
-
-        $currencyUpdateRate = [];
-        foreach ($responseData['quotes'] as $key => $quote) {
-            $strReplace = str_replace($responseData['source'], '', $key);
-            $currencyUpdateRate[$strReplace] = $quote;
-        }
-
-        foreach ($currencyUpdateRate as $currencyCode => $conversionRate) {
-            $currency = Currency::where('code', $currencyCode)->first();
-            if ($currency) {
-                $currency->update([
-                    'conversion_rate' => $conversionRate
-                ]);
-            }
-        }
-
-        return true;
+        return $updated;
     }
 }

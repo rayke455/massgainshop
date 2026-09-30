@@ -18,7 +18,7 @@
 
             <div class="card mt-50">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
-                    <h4 class="mb-0">@lang("Support Tickets")</h4>
+                    <h4 class="mb-0 d-none d-md-block">@lang("Support Tickets")</h4>
                     <div class="btn-area">
                         <a href="{{ route('user.ticket.create') }}" class="cmn-btn"><i
                                 class="fa-light fa-layer-plus"></i>@lang("Create")</a>

@@ -129,6 +129,8 @@
                 deferredPrompt = e;
 
                 const installButton = document.getElementById('installButton');
+
+                if (!installButton) return; // install popup not on this page
                 let pwaStatus = localStorage.getItem('pwa_install');
                 if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
                     $("#pwaInstallPopup").show(); // Show your modal
@@ -147,6 +149,7 @@
             });
         } else if (isFirefox) {
             const installButton = document.getElementById('installButton');
+            if (!installButton) return; // install popup not on this page
             let pwaStatus = localStorage.getItem('pwa_install');
             if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
                 $("#pwaInstallPopup").show(); // Show your modal with Firefox-specific instructions

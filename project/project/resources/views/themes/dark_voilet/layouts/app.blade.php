@@ -39,13 +39,7 @@
 </head>
 
 
-<body class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}" onload="preloaderFunction()">
-
-<!-- Preloader section start -->
-<div id="preloader">
-    <img class="preloader-image" src="{{ asset(template(true).'/img/preloader/preloader.png') }}" alt="">
-</div>
-<!-- Preloader section end -->
+<body class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}">
 
 @include(template().'partials.header')
 

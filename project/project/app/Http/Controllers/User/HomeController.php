@@ -132,9 +132,17 @@ class HomeController extends Controller
                 ->selectRaw("COUNT(*) as total,
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled")
+                SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
+                SUM(CASE WHEN status IN ('awaiting','pending','processing','progress') THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN status NOT IN ('canceled','refunded') THEN price ELSE 0 END) as spent")
                 ->first()
                 ->toArray());
+
+            $data['recentOrders'] = Order::with('service:id,service_title')
+                ->where('user_id', $this->user->id)
+                ->latest()
+                ->take(5)
+                ->get(['id', 'service_id', 'link', 'quantity', 'price', 'status', 'created_at']);
 
             return view(template() . 'user.dashboard', $data, compact('transactions', 'currency'));
         } catch (\Exception $exception) {
@@ -176,15 +184,16 @@ class HomeController extends Controller
             $user = auth()->user();
             $response = $user->update([
                 'firstname' => $data['firstname'],
-                'lastname' => $data['lastname'],
+                'lastname' => $data['lastname'] ?? null,
                 'email' => $data['email'],
                 'phone' => $data['phone'],
-                'phone_code' => $data['phone_code'],
-                'address_one' => $data['address'],
-                'state' => $data['address'],
-                'country' => $data['country'],
-                'country_code' => $data['country_code'],
-                'zip_code' => $data['zipcode'],
+                'phone_code' => $data['phone_code'] ?? null,
+                'address_one' => $data['address'] ?? null,
+                'state' => $data['state'] ?? null, // was saving the address into state
+                'country' => $data['country'] ?? null,
+                // The phone's country is what drives phone checks; keep it when no profile country is chosen.
+                'country_code' => ($data['country_code'] ?? null) ?: ($data['phone_country'] ?? null),
+                'zip_code' => $data['zipcode'] ?? null,
                 'time_zone' => $data['time_zone'],
                 'language_id' => $data['language'],
             ]);
@@ -321,7 +330,10 @@ class HomeController extends Controller
 
     public function selectedCurrency(Request $request)
     {
-        $currency = Currency::where('code', $request->currency)->first();
+        $currency = Currency::where('code', $request->currency)->where('status', 1)->first();
+        if (!$currency) {
+            return response(['success' => false, 'message' => 'Unknown currency'], 422);
+        }
         $this->user->update([
             'currency' => $currency->code
         ]);

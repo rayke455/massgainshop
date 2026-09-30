@@ -1,93 +1,26 @@
-<!-- Nav section start -->
-<nav class="navbar fixed-top navbar-expand-lg ">
-    <div class="container custom-container">
-        <a class="navbar-brand logo" href="{{ url('/') }}"><img
-                src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}" alt="Logo"></a>
-        <button class="navbar-toggler d-none d-lg-block" type="button" data-bs-toggle="offcanvas"
-                data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
-            <i class="fa-light fa-list"></i>
+<!-- Top bar start -->
+@php
+    $zkUser = auth()->user();
+    $zkBalance = $zkUser->currency
+        ? currencyPositionBySelectedCurrency($zkUser->balance * ($curr ? $curr->conversion_rate : 1), $zkUser->currency)
+        : currencyPosition($zkUser->balance);
+@endphp
+<header class="zk-topbar">
+        <button class="zk-icon-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#zkSidebar"
+                aria-controls="zkSidebar" aria-label="@lang('Open menu')">
+            <i class="fa-regular fa-bars"></i>
         </button>
-        <div class="offcanvas offcanvas-end mobile-nav-offcanvas" tabindex="-1" id="offcanvasNavbar"
-             aria-labelledby="offcanvasNavbar">
-            <div class="offcanvas-header">
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    <img class="logo" src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
-                         alt="Logo"></a>
-                <button type="button" class="cmn-btn-close" data-bs-dismiss="offcanvas" aria-label="Close"><i
-                        class="fa-light fa-arrow-right"></i></button>
-            </div>
-            <div class="offcanvas-body align-items-center justify-content-between">
-                <ul class="navbar-nav m-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {{ menuActive('user.dashboard') }}" aria-current="page"
-                           href="{{ route('user.dashboard') }}">@lang("Dashboard")</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {{ menuActive(['user.order.create', 'user.mass.order', 'user.show.draft.order', 'user.order.index', 'user.show.order.refill', 'user.show.drip.feed']) }}"
-                           href="#" role="button" data-bs-toggle="dropdown"
-                           aria-expanded="false">
-                            @lang("order")
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item" href="{{ route('user.order.create') }}">@lang("New Order")</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('user.mass.order') }}">@lang("Mass Order")</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item"
-                                   href="{{ route('user.show.draft.order') }}">@lang("Draft Mass Order")</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ route('user.order.index') }}">@lang("All Order")</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item"
-                                   href="{{ route('user.show.order.refill') }}">@lang("Refill Order")</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item"
-                                   href="{{ route('user.show.drip.feed') }}">@lang("Drip Feed")</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url('services') }}">@lang("services")</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ menuActive('user.add.fund') }}"
-                           href="{{ route('user.add.fund') }}">@lang("add Fund")</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {{ menuActive(['user.fund.index','user.transaction.history', 'user.kyc.verification.history']) }}"
-                           href="#" role="button" data-bs-toggle="dropdown"
-                           aria-expanded="false">
-                            @lang("history")
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ route('user.fund.index') }}">@lang("deposit")</a></li>
-                            <li><a class="dropdown-item"
-                                   href="{{ route('user.transaction.history') }}">@lang("transaction")</a>
-                            </li>
-                            <li><a class="dropdown-item" href="{{ route('user.kyc.verification.history') }}">
-                                    @lang("KYC verification")</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ menuActive('user.notice') }}"
-                           href="{{ route('user.notice') }}">@lang("notice")</a>
-                    </li>
+        <a class="zk-topbar__logo d-lg-none" href="{{ route('user.dashboard') }}">
+            <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}" alt="{{ basicControl()->site_title }}">
+        </a>
 
-                    @if(Module::has('ChildPanel') && Module::isEnabled('ChildPanel'))
-                        @include('childpanel::main_user.light-sidebar-push')
-                    @endif
+        <a href="{{ route('user.add.fund') }}" class="zk-balance" title="@lang('Add funds')">
+            <span class="zk-balance__label">@lang('Balance')</span>
+            <strong class="zk-balance__amount notranslate">{{ $zkBalance }}</strong>
+            <span class="zk-balance__add"><i class="fa-regular fa-plus"></i><span class="d-none d-sm-inline"> @lang('Add funds')</span></span>
+        </a>
 
-                </ul>
-            </div>
-        </div>
-        <div class="nav-right" id="pushNotificationArea">
+        <div class="nav-right" id="pushNotificationArea" translate="no">
             <ul class="custom-nav header-nav">
                 <li>
                     <a id="toggle-btnq" class="nav-link d-flex toggle-btn">
@@ -96,7 +29,12 @@
                     </a>
                 </li>
 
+                @if(basicControl()->auto_translate ?? false)
                 <li class="nav-item">
+                    @include(template().'partials.lang_picker', ['zkLangClass' => 'language-box', 'zkLangSelectClass' => 'form-select'])
+                </li>
+                @endif
+                <li class="nav-item d-none d-md-block">
                     @if(count($currencies) > 0)
                         <div class="language-box">
                             <i class="fa-light fa-coins"></i>
@@ -149,7 +87,7 @@
                             src="{{ getFile(optional(auth()->user())->image_driver, optional(auth()->user())->image) }}"
                             alt="Profile" class="rounded-circle">
                         <span
-                            class="d-none d-xl-block dropdown-toggle ps-2">{{ optional(auth()->user())->firstname . ' ' . optional(auth()->user())->lastname }}</span>
+                            class="d-none d-xl-block dropdown-toggle ps-2">{{ trim(optional(auth()->user())->firstname . ' ' . optional(auth()->user())->lastname) ?: optional(auth()->user())->username }}</span>
                     </a>
 
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
@@ -160,12 +98,12 @@
                                     alt="Profile Image">
                             </div>
                             <div class="profile-content">
-                                <h6>{{ optional(auth()->user())->firstname . ' ' . optional(auth()->user())->lastname }}</h6>
+                                <h6>{{ trim(optional(auth()->user())->firstname . ' ' . optional(auth()->user())->lastname) ?: optional(auth()->user())->username }}</h6>
                                 <span>
                                     @if(auth()->user()->currency)
-                                        {{ currencyPositionBySelectedCurrency(optional(auth()->user())->balance * ($curr ?$curr->conversion_rate:1), auth()->user()->currency) }}
+                                        <span class="notranslate">{{ currencyPositionBySelectedCurrency(optional(auth()->user())->balance * ($curr ?$curr->conversion_rate:1), auth()->user()->currency) }}</span>
                                     @else
-                                        {{ currencyPosition(optional(auth()->user())->balance) }}
+                                        <span class="notranslate">{{ currencyPosition(optional(auth()->user())->balance) }}</span>
                                     @endif
                                 </span>
                             </div>
@@ -248,8 +186,8 @@
                 </li>
             </ul>
         </div>
-    </div>
-</nav>
+</header>
+<!-- Top bar end -->
 
 
 @push('js-lib')

@@ -1,30 +1,6 @@
 
-const preloaderFunction = () => {
-    try {
-        // Hide the preloader only if everything is successful
-        preloader.style.display = "none";
-    } catch (error) {
-        console.error("An error occurred:", error);
-
-        // Optionally display an error message to the user
-        preloader.innerHTML = `
-            <div style="color: red; text-align: center;">
-                An error occurred. Please try again later.
-            </div>
-        `;
-    }
-};
-
-// Fallback: Ensure preloader is visible indefinitely on error
-window.addEventListener("load", preloaderFunction);
-
-// Fallback timeout to ensure visibility
-setTimeout(() => {
-    if (preloader.style.display !== "none") {
-        console.warn("Fallback triggered. Preloader is still visible.");
-    }
-}, 5000); // 10 seconds fallback (adjust as necessary)
-
+// Preloader removed for faster page loads; kept as a no-op for old onload handlers.
+const preloaderFunction = () => {};
 
 // toggleSideMenu start
 const toggleSideMenu = () => {

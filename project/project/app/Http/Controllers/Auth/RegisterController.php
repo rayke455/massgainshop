@@ -60,21 +60,53 @@ class RegisterController extends Controller
     }
 
 
-    protected function validator(array $data)
+    /**
+     * Expected national number length(s) for the chosen country (15 = E.164 max when unknown).
+     * Match on the ISO country first: dial codes are shared (+1 is the US, Canada, American Samoa, …),
+     * so matching on the dial code alone picks whichever country happens to be listed first.
+     */
+    protected function phoneLengthFor(array $data)
     {
-        $phoneLength = 15;
+        $iso = strtoupper((string)($data['country_code'] ?? ''));
+        $phoneCode = $data['phone_code'] ?? null;
+
+        $byDialCode = null;
         foreach (config('country') as $country) {
-            if ($country['phone_code'] == $data['phone_code']) {
-                $phoneLength = $country['phoneLength'];
-                break;
+            if ($iso && strtoupper($country['code']) === $iso) {
+                return $country['phoneLength'];
+            }
+            if ($byDialCode === null && $country['phone_code'] == $phoneCode) {
+                $byDialCode = $country['phoneLength'];
             }
         }
+        return $byDialCode ?? 15;
+    }
+
+    /**
+     * Keep digits only and drop a leading trunk "0" (e.g. Kenyan 0712…, UK 07…) when that is
+     * the only reason the number is one digit too long for its country.
+     */
+    protected function normalizePhone(array $data)
+    {
+        $phone = preg_replace('/\D+/', '', (string)($data['phone'] ?? ''));
+        $lengths = (array)$this->phoneLengthFor($data);
+        if (str_starts_with($phone, '0') && !in_array(strlen($phone), $lengths) && in_array(strlen($phone) - 1, $lengths)) {
+            $phone = substr($phone, 1);
+        }
+        $data['phone'] = $phone;
+        return $data;
+    }
+
+    protected function validator(array $data)
+    {
+        $data = $this->normalizePhone($data);
+        $phoneLength = $this->phoneLengthFor($data);
 
         $basicControl = basicControl();
         if ($basicControl->strong_password == 0) {
-            $rules['password'] = ['required', 'min:6', 'confirmed'];
+            $rules['password'] = ['required', 'string', 'min:6'];
         } else {
-            $rules['password'] = ["required", 'confirmed',
+            $rules['password'] = ["required",
                 Password::min(6)->mixedCase()
                     ->letters()
                     ->numbers()
@@ -82,18 +114,15 @@ class RegisterController extends Controller
                     ->uncompromised()];
         }
 
-        $rules['first_name'] = ['required', 'string', 'max:91'];
-        $rules['last_name'] = ['required', 'string', 'max:91'];
-        $rules['username'] = ['required', 'alpha_dash', 'min:5',
+        $rules['username'] = ['required', 'alpha_dash', 'min:5', 'max:60',
             Rule::unique('users', 'username')->whereNull('child_panel_id')];
         $rules['email'] = ['required', 'string', 'email', 'max:255',
             Rule::unique('users', 'email')->whereNull('child_panel_id')];
-        $rules['password'] = ['required', 'string', 'min:6', 'confirmed'];
-        $rules['country_code'] = ['nullable', 'string'];
-        $rules['phone_code'] = ['nullable', 'string'];
+        $rules['country_code'] = ['nullable', 'string', 'max:5'];
+        $rules['phone_code'] = ['required', 'string', 'max:8'];
         $rules['phone'] = ['required', 'string', 'unique:users,phone', new PhoneLength($phoneLength)];
 
-        if ($basicControl->google_recaptcha == 1 && $basicControl->google_recaptcha_login == 1) {
+        if ($basicControl->google_recaptcha == 1 && $basicControl->google_recaptcha_register == 1) {
             GoogleRecaptchaService::responseRecaptcha($data['g-recaptcha-response']);
             $rules['g-recaptcha-response'] = 'sometimes|required';
         }
@@ -109,6 +138,13 @@ class RegisterController extends Controller
         ]);
     }
 
+    /** Local currency for the sign-up country (only if it's switched on in Admin → Currencies). */
+    protected function currencyForCountry(?string $iso): ?string
+    {
+        $code = config('country_currency.' . strtoupper((string) $iso));
+        return $code && \App\Models\Currency::where('code', $code)->where('status', 1)->exists() ? $code : null;
+    }
+
     protected function create(array $data)
     {
         $basic = basicControl();
@@ -119,12 +155,16 @@ class RegisterController extends Controller
             $sponsorId = null;
         }
 
+        $data = $this->normalizePhone($data);
+
+        // The form only asks for username/email/phone; the username doubles as the display name.
         return User::create([
-            'firstname' => $data['first_name'],
-            'lastname' => $data['last_name'],
+            'firstname' => $data['username'],
+            'lastname' => null,
             'username' => $data['username'],
             'email' => $data['email'],
             'country_code' => $data['country_code'] ?? null,
+            'currency' => $this->currencyForCountry($data['country_code'] ?? null),
             'phone_code' => $data['phone_code'],
             'phone' => $data['phone'],
             'password' => Hash::make($data['password']),

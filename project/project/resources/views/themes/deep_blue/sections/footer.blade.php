@@ -6,7 +6,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="box box1">
                         <a class="navbar-brand" href="{{ url('/') }}">
-                            <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
+                            <img src="{{ getFile(basicControl()->admin_dark_mode_logo_driver, basicControl()->admin_dark_mode_logo) }}"
                                  alt="@lang('Logo')">
                         </a>
 

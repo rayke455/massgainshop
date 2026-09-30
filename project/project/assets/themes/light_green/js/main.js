@@ -1,8 +1,6 @@
 // Preloader area
-const preloader = document.getElementById("preloader");
-const preloaderFunction = () => {
-    preloader.style.display = "none";
-};
+// Preloader removed for faster page loads; kept as a no-op for old onload handlers.
+const preloaderFunction = () => {};
 
 // toggleSideMenu start
 const toggleSideMenu = () => {
@@ -52,9 +50,10 @@ $(document).ready(function () {
     // plan_area payment_slider
     $('.payment-slider').owlCarousel({
         loop: true,
-        autoplay: false,
-        autoplayTimeout: 1000,
-        margin: 20,
+        autoplay: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        autoplayTimeout: 2500,
+        autoplayHoverPause: true,
+        margin: 16,
         nav: false,
         dots: false,
         responsive: {

@@ -53,6 +53,8 @@ class ApiProviderController extends Controller
 
             $providerResponse = ApiProvider::create([
                 'api_name' => $request->api_name,
+                'low_balance_alert' => $request->input('low_balance_alert') ?? 5,
+                'balance_checked_at' => now(),
                 'url' => $request->url,
                 'api_key' => $request->api_key,
                 'conversion_rate' => $request->conversion_rate,
@@ -100,6 +102,8 @@ class ApiProviderController extends Controller
             });
             $providerResponse = $apiProvider->update([
                 'api_name' => $request->api_name,
+                'low_balance_alert' => $request->input('low_balance_alert') ?? 5,
+                'balance_checked_at' => now(),
                 'url' => $request->url,
                 'api_key' => $request->api_key,
                 'conversion_rate' => $request->conversion_rate,
@@ -180,20 +184,14 @@ class ApiProviderController extends Controller
                 throw new \Exception('API provider is not available.');
             });
 
-            $response = Http::post($apiProvider->url, [
-                'key' => $apiProvider->api_key,
-                'action' => 'services',
-            ]);
-
-            $responseData = $response->json();
-
-            if (!$responseData) {
-                throw new \Exception('Please Check your API URL Or API Key.');
-            }
+            // Fresh list, indexed by service id once (the old per-service scan was O(n²) and timed out on big panels).
+            $byId = collect(app(\App\Services\ProviderApi::class)->services($apiProvider, true))->keyBy(fn($s) => (string)$s['service']);
+            @set_time_limit(0);
 
             foreach ($apiProvider->services as $k => $data) {
                 if (isset($data->price)) {
-                    $apiRate = collect($responseData)->where('service', $data->api_service_id)->pluck('price')[0] ?? collect($responseData)->where('service', $data->api_service_id)->pluck('rate')[0] ?? $data->api_provider_price;
+                    $remote = $byId[(string)$data->api_service_id] ?? null;
+                    $apiRate = $remote['price'] ?? $remote['rate'] ?? $data->api_provider_price;
 
                     $conversionRate = $apiProvider->conversion_rate ?: 1;
                     $originalPrice = $data->original_price ?: 1;
@@ -222,16 +220,7 @@ class ApiProviderController extends Controller
                 throw new \Exception('API provider is not available.');
             });
 
-            $response = Http::post($apiProvider->url, [
-                'key' => $apiProvider->api_key,
-                'action' => 'balance',
-            ]);
-
-            $providerBalance = $response->json();
-
-            if (!$providerBalance) {
-                throw new \Exception('Please Check your API URL Or API Key.');
-            }
+            $providerBalance = app(\App\Services\ProviderApi::class)->balance($apiProvider);
 
             $apiProvider->update([
                 'balance' => $providerBalance['balance'] ?? $apiProvider->balance,

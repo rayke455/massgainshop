@@ -89,8 +89,9 @@ class PaymentMethodController extends Controller
                 if ($k != $key) {
                     continue;
                 } else {
-                    $rules[$key] = 'required|max:5000';
-                    $parameters[$key] = $v;
+                    // Callback URLs and M-Pesa's Till number are optional; everything else is a required credential.
+                    $rules[$key] = in_array($key, ['webhook', 'till_number'], true) ? 'nullable|max:5000' : 'required|max:5000';
+                    $parameters[$key] = $v ?? '';
                 }
             }
         }
@@ -257,69 +258,39 @@ class PaymentMethodController extends Controller
 
     public function autoUpdateCurrency(Request $request, $id)
     {
-        $updateForMethods = Gateway::query()->where('id', $id)->first();
-        if (!$updateForMethods) {
-            return back()->with('warning', 'Gateway not found');
-        }
-
-        if (!$updateForMethods) {
+        $gateway = Gateway::query()->where('id', $id)->first();
+        if (!$gateway) {
             return back()->with('warning', 'Gateway not found.');
         }
 
-        $paymentCurrencies = $updateForMethods->pluck('currencies');
+        $updated = app(\App\Services\MarketRateService::class)->updateGatewayRates($gateway, true);
 
-        $fiatCurrency = [];
-        foreach ($paymentCurrencies as $key => $currency) {
-            if (isset($currency->{'0'})) {
-                $currencyKeys = array_keys((array)$currency->{'0'});
-                $fiatCurrency = array_merge($fiatCurrency, $currencyKeys);
-            }
+        return $updated
+            ? back()->with('success', "Updated {$updated} currency rate(s) for {$gateway->name} from live market data.")
+            : back()->with('error', 'Could not get market rates for this gateway right now. Please try again.');
+    }
+
+    /** M-Pesa "Test connection" — no prompt is sent to any phone. */
+    public function testMpesa($id)
+    {
+        $gateway = Gateway::where('id', $id)->where('code', 'mpesa')->firstOrFail();
+        $findings = app(\App\Http\Controllers\MpesaController::class)->diagnose($gateway);
+
+        return back()->with('mpesa_findings', $findings);
+    }
+
+    /** One click: refresh the rates of every active payment gateway. */
+    public function autoUpdateAllCurrencies()
+    {
+        $service = app(\App\Services\MarketRateService::class);
+        $total = 0;
+        foreach (Gateway::where('status', 1)->get() as $gateway) {
+            $total += $service->updateGatewayRates($gateway);
         }
 
-        $paymentCurrencies = $updateForMethods->pluck('supported_currency')->flatMap(function ($currency) {
-            return (array)$currency;
-        })->unique()->toArray();
-
-
-        $matchingFiatCurrencies = array_unique(array_intersect($fiatCurrency, $paymentCurrencies));
-        $currencyUpdate = CurrencyLayerService::getCurrencyRate($matchingFiatCurrencies);
-
-        if (!$currencyUpdate->success) {
-            return back()->with('error', 'Failed to update currency rate. Please try again.');
-        }
-
-        $autoUp = [];
-        foreach ($currencyUpdate->quotes as $key => $quote) {
-            $currencyCode = str_replace($currencyUpdate->source, '', $key); // Remove "USD" from "USDxxx"
-            $autoUp[$currencyCode] = $quote;
-        }
-
-        $baseCurrency = basicControl()->base_currency;
-
-        if ($baseCurrency === $currencyUpdate->source) {
-            $usdToBase = 1.00;
-        } else {
-            $usdToBase = $autoUp[$baseCurrency] ?? 1.00;
-        }
-
-        $currenciesArr = [];
-        foreach ($updateForMethods->receivable_currencies as $receivable_currency) {
-            $currencyName = $receivable_currency->name ?? $receivable_currency->currency;
-            $resRate = $this->getCheck($currencyName, $autoUp);
-
-            if ($resRate) {
-                $curRate = $resRate / $usdToBase;
-                $formattedRate = floatval(number_format($curRate, 6, '.', ''));
-                $receivable_currency->conversion_rate = $formattedRate;
-            }
-
-            $currenciesArr[] = $receivable_currency;
-        }
-
-        $updateForMethods->receivable_currencies = $currenciesArr;
-        $updateForMethods->save();
-
-        return back()->with('success', 'Auto Currency Updated Successfully');
+        return $total
+            ? back()->with('success', "Updated {$total} gateway currency rate(s) from live market data.")
+            : back()->with('error', 'Could not reach the market data source. Please try again in a minute.');
     }
 
     public function getCheck($currency, $autoUp)

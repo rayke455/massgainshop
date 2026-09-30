@@ -1,27 +1,27 @@
 <?php
 return [
     'light_green'=>[
-        'name' =>'Light Blue',
-        'preview_link' =>'assets/themes/light_green/img/light.png',
+        'name' =>'Zirka Light (recommended)',
+        'preview_link' =>'assets/themes/light_green/img/zirka-theme-preview.jpg',
     ],
     'dark_voilet'=>[
         'name' =>'Dark Voilet',
-        'preview_link' =>'assets/themes/dark_voilet/img/dark.png',
+        'preview_link' =>'assets/themes/dark_voilet/img/zirka-preview.jpg',
     ],
     'minimal'=>[
         'name' =>'Minimal',
-        'preview_link' =>'assets/themes/minimal/images/minimal.png',
+        'preview_link' =>'assets/themes/minimal/images/zirka-preview.jpg',
     ],
     'deep_blue'=>[
         'name' =>'Deep Blue',
-        'preview_link' =>'assets/themes/deep_blue/img/deep-blue.png',
+        'preview_link' =>'assets/themes/deep_blue/img/zirka-preview.jpg',
     ],
     'dark_mode'=>[
         'name' =>'Dark Mode',
-        'preview_link' =>'assets/themes/dark_mode/img/dark-mode.png',
+        'preview_link' =>'assets/themes/dark_mode/img/zirka-preview.jpg',
     ],
     'light_orange'=>[
         'name' =>'Light Orange',
-        'preview_link' =>'assets/themes/light_orange/img/light-orange.png',
+        'preview_link' =>'assets/themes/light_orange/img/zirka-preview.jpg',
     ]
 ];

@@ -35,17 +35,14 @@ class ServicePriceUpdate extends Command
 
             foreach ($apiProviders as $provider) {
 
-                $response = Http::post($provider->url, [
-                    'key' => $provider->api_key,
-                    'action' => 'services',
-                ]);
-
-                if ($response->failed()) {
-                    Log::error("API request failed for provider ID: {$provider->id}", ['response' => $response->body()]);
+                try {
+                    // Shared client: form-encoded, long timeout, fresh list; indexed once by service id.
+                    $responseData = collect(app(\App\Services\ProviderApi::class)->services($provider, true))
+                        ->keyBy(fn($s) => (string)$s['service']);
+                } catch (\Exception $e) {
+                    Log::error("API request failed for provider ID: {$provider->id}", ['error' => $e->getMessage()]);
                     continue;
                 }
-
-                $responseData = collect($response->json());
 
                 $updates = [];
 
@@ -59,9 +56,8 @@ class ServicePriceUpdate extends Command
                         continue;
                     }
 
-                    $apiRate = collect($responseData)->firstWhere('service', $service->api_service_id)['price']
-                        ?? collect($responseData)->firstWhere('service', $service->api_service_id)['rate']
-                        ?? $service->api_provider_price;
+                    $remote = $responseData[(string)$service->api_service_id] ?? null;
+                    $apiRate = $remote['price'] ?? $remote['rate'] ?? $service->api_provider_price;
 
                     $conversionRate = $provider->conversion_rate ?: 1;
                     $originalPrice = $service->original_price ?: 1;

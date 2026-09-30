@@ -14,7 +14,14 @@
                     </nav>
                     <h1 class="page-header-title">@lang("Manage Currency")</h1>
                 </div>
-                <div class="col-sm-auto">
+                <div class="col-sm-auto d-flex flex-wrap gap-2">
+                    <form action="{{ route('admin.currency.add.all') }}" method="post"
+                          onsubmit="this.querySelector('button').disabled = true; this.querySelector('span').textContent = '@lang('Adding…')';">
+                        @csrf
+                        <button type="submit" class="btn btn-white" title="@lang('Adds every world currency (about 155) that is missing, priced at the live market rate. Existing ones are not changed.')">
+                            <i class="bi-globe2 me-1"></i> <span>@lang('Add all world currencies')</span>
+                        </button>
+                    </form>
                     <a href="{{ route('admin.currency.create') }}" class="btn btn-primary">
                         <i class="bi-plus me-1"></i> @lang("Add Currency")
                     </a>
@@ -35,16 +42,34 @@
             </div>
         </div>
 
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <h5 class="mb-1">@lang("Live market rates")</h5>
+                    <p class="mb-0 text-body">@lang("Rates come from free market sources (ExchangeRate-API for money, CoinGecko for crypto). No API key needed.")</p>
+                </div>
+                <form action="{{ route('admin.currency.auto.toggle') }}" method="post" class="d-flex align-items-center gap-2">
+                    @csrf
+                    <input type="hidden" name="enabled" value="{{ basicControl()->auto_currency_update ? 0 : 1 }}">
+                    <span class="badge {{ basicControl()->auto_currency_update ? 'bg-soft-success text-success' : 'bg-soft-secondary text-secondary' }}">
+                        @lang("Daily auto-update"): {{ basicControl()->auto_currency_update ? __('On') : __('Off') }}
+                    </span>
+                    <button type="submit" class="btn btn-sm btn-white">
+                        {{ basicControl()->auto_currency_update ? __('Turn off') : __('Turn on') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header card-header-content-md-between">
                 <div class="mb-2 mb-sm-0">
                     <h4 class="card-header-title">@lang("Currencies")</h4>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-info all-auto-update-currency"
-                            data-route="{{ route('admin.currency.all.auto.update') }}"
-                            data-bs-toggle="modal" data-bs-target="#autoUpdateCurrencyModal">
-                        @lang("All Currency Auto Update")
+                    <button type="button" class="btn btn-sm btn-primary" id="checkMarketRates"
+                            data-bs-toggle="modal" data-bs-target="#marketRatesModal">
+                        <i class="bi-graph-up-arrow me-1"></i> @lang("Check market rates")
                     </button>
                     <div class="dropdown">
                         <button type="button" class="btn btn-white btn-sm w-100"
@@ -137,7 +162,7 @@
                                     @lang($currency->name)
                                 </a>
                             </td>
-                            <td>{{ number_format($currency->conversion_rate, 2) ." ".$currency->code }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) $currency->conversion_rate, $currency->conversion_rate >= 1 ? 4 : 10, '.', ','), '0'), '.') . ' ' . $currency->code }}</td>
                             <td>
                                 <span
                                     class="badge bg-soft-{{ $currency->status == 1 ? 'success' : 'danger' }} text-{{ $currency->status == 1 ? 'success' : 'danger' }}">
@@ -222,6 +247,44 @@
 
     @include('admin.currency.components.delete_modal')
     @include('admin.currency.components.activate_deactivate')
+    <div class="modal fade" id="marketRatesModal" tabindex="-1" aria-labelledby="marketRatesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form class="modal-content" action="{{ route('admin.currency.market.apply') }}" method="post" id="marketRatesForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="marketRatesLabel">@lang("Market rates") <small class="text-muted">(1 <span class="mr-base"></span> = ...)</small></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@lang('Close')"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mr-loading text-center py-5"><div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 mb-0">@lang("Fetching live rates...")</p></div>
+                    <div class="mr-error alert alert-soft-danger d-none"></div>
+                    <div class="mr-content d-none">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-align-middle mb-2">
+                                <thead class="thead-light">
+                                <tr>
+                                    <th><input type="checkbox" class="form-check-input mr-all" checked aria-label="@lang('Select all')"></th>
+                                    <th>@lang("Currency")</th>
+                                    <th class="text-end">@lang("Your rate")</th>
+                                    <th class="text-end">@lang("Market rate")</th>
+                                    <th class="text-end">@lang("Change")</th>
+                                </tr>
+                                </thead>
+                                <tbody class="mr-rows"></tbody>
+                            </table>
+                        </div>
+                        <p class="small text-muted mb-0 mr-meta"></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-white mr-refresh">@lang("Refresh")</button>
+                    <button type="submit" class="btn btn-primary mr-apply" disabled>@lang("Apply selected rates")</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @include('admin.currency.components.auto_currency_update')
 @endsection
 
@@ -236,6 +299,74 @@
 
 
 @push('script')
+    <script>
+        'use strict';
+        (function () {
+            const modal = document.getElementById('marketRatesModal');
+            const fmt = n => n === null ? '—' : (n >= 1 ? Number(n).toLocaleString(undefined, {maximumFractionDigits: 4}) : Number(n).toPrecision(4));
+            const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+            const t = {
+                base: @json(__('base')), notFound: @json(__('not found')), source: @json(__('Source')),
+                updated: @json(__('Updated')), unreachable: @json(__('The market data source could not be reached. Please try again in a minute.')),
+                failed: @json(__('Could not load market rates. Please try again.')), off: @json(__('off')),
+            };
+
+            function load(fresh) {
+                modal.querySelector('.mr-loading').classList.remove('d-none');
+                modal.querySelector('.mr-content').classList.add('d-none');
+                modal.querySelector('.mr-error').classList.add('d-none');
+                modal.querySelector('.mr-apply').disabled = true;
+
+                fetch(@json(route('admin.currency.market.rates')) + (fresh ? '?fresh=1' : ''), {headers: {'Accept': 'application/json'}})
+                    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                    .then(data => {
+                        modal.querySelector('.mr-base').textContent = data.base;
+                        let rows = '';
+                        let available = 0;
+                        data.rows.forEach(row => {
+                            const isBase = row.code.toUpperCase() === data.base;
+                            const has = row.market !== null && !isBase;
+                            if (has) available++;
+                            const change = row.change === null ? '—'
+                                : `<span class="${Math.abs(row.change) >= 5 ? 'text-danger fw-semibold' : 'text-muted'}">${row.change > 0 ? '+' : ''}${row.change}%</span>`;
+                            rows += `<tr>
+                                <td><input type="checkbox" class="form-check-input mr-pick" name="ids[]" value="${row.id}" ${has ? 'checked' : 'disabled'}></td>
+                                <td><strong>${esc(row.code)}</strong> <span class="text-muted small">${esc(row.name || '')}</span>${row.active ? '' : ` <span class="badge bg-soft-secondary text-secondary">${t.off}</span>`}</td>
+                                <td class="text-end">${fmt(row.current)}</td>
+                                <td class="text-end fw-semibold">${has ? fmt(row.market) : (isBase ? t.base : t.notFound)}</td>
+                                <td class="text-end">${has ? change : '—'}</td>
+                            </tr>`;
+                        });
+                        modal.querySelector('.mr-rows').innerHTML = rows;
+                        modal.querySelector('.mr-meta').textContent =
+                            (data.sources.length ? t.source + ': ' + data.sources.join(' + ') : '') +
+                            (data.updated_at ? ' · ' + t.updated + ': ' + data.updated_at : '');
+                        modal.querySelector('.mr-loading').classList.add('d-none');
+                        modal.querySelector('.mr-content').classList.remove('d-none');
+                        modal.querySelector('.mr-apply').disabled = available === 0;
+                        if (!data.sources.length) showError(t.unreachable);
+                    })
+                    .catch(() => showError(t.failed));
+            }
+
+            function showError(msg) {
+                modal.querySelector('.mr-loading').classList.add('d-none');
+                const box = modal.querySelector('.mr-error');
+                box.textContent = msg;
+                box.classList.remove('d-none');
+            }
+
+            modal.addEventListener('show.bs.modal', () => load(false));
+            modal.querySelector('.mr-refresh').addEventListener('click', () => load(true));
+            modal.addEventListener('change', e => {
+                if (e.target.classList.contains('mr-all')) {
+                    modal.querySelectorAll('.mr-pick:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+                }
+                modal.querySelector('.mr-apply').disabled = !modal.querySelector('.mr-pick:checked');
+            });
+        })();
+    </script>
+
     <script>
         'use strict';
         $(document).on('click', '.status-change', function () {

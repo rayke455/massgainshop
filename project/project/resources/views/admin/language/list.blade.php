@@ -26,6 +26,25 @@
             <div class="col-lg-9">
                 <div class="d-grid gap-3 gap-lg-5">
                     <div class="card">
+                        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                            <span class="avatar avatar-sm avatar-soft-primary avatar-circle"><span class="avatar-initials"><i class="bi-translate"></i></span></span>
+                            <div class="flex-grow-1" style="min-width: 240px">
+                                <h5 class="mb-1">@lang('Auto-translate by country')</h5>
+                                <p class="mb-0 small text-body">@lang('Visitors see the website and their dashboard in their own language, chosen from their country (for example Brazil → Portuguese, Germany → German). They can switch language or go back to English from the globe menu. Admin pages always stay in English.')</p>
+                            </div>
+                            <form action="{{ route('admin.language.auto.translate') }}" method="post" class="d-flex align-items-center gap-2">
+                                @csrf
+                                <input type="hidden" name="enabled" value="{{ basicControl()->auto_translate ? 0 : 1 }}">
+                                <span class="badge {{ basicControl()->auto_translate ? 'bg-soft-success text-success' : 'bg-soft-secondary text-secondary' }}">
+                                    {{ basicControl()->auto_translate ? __('On') : __('Off') }}
+                                </span>
+                                <button type="submit" class="btn btn-sm {{ basicControl()->auto_translate ? 'btn-white' : 'btn-primary' }}">
+                                    {{ basicControl()->auto_translate ? __('Turn off') : __('Turn on') }}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card">
                         <div class="card-header d-flex align-items-center justify-content-between">
                             <h2 class="card-title h4 mt-3">@lang("Languages")</h2>
                             <a href="{{ route('admin.language.create') }}"

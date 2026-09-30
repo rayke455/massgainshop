@@ -3,19 +3,19 @@
 @section('content')
     <div class="dashboard-wrapper">
         <div class="container custom-container">
-            <div class="breadcrumb-area">
-                <h4 class="title">@lang("dashboard")</h4>
-                <ul class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a href="{{ url('/') }}"><i class="fa-light fa-house"></i>
-                            @lang("Home")
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">@lang("dashboard")</li>
-                </ul>
+            <div class="zk-welcome">
+                <div>
+                    <h1 class="zk-welcome__title">@lang('Welcome back'), {{ auth()->user()->username }}</h1>
+                    <p class="zk-welcome__sub">@lang('What would you like to grow today?')</p>
+                </div>
+                <div class="zk-welcome__actions">
+                    <a href="{{ route('user.order.create') }}" class="zk-btn zk-btn--primary"><i class="fa-regular fa-cart-shopping"></i> @lang('Buy services')</a>
+                </div>
             </div>
 
-            <div class="row align-items-end firebase-notify" id="firebase-app">
+            {{-- Only when push notifications (Firebase) are configured; otherwise the prompt can never work. --}}
+            @if(!empty($firebaseNotify['apiKey']))
+            <div class="row align-items-end firebase-notify" id="firebase-app" translate="no">
                 <div v-if="user_foreground == '1' || user_background == '1'">
                     <div class="col-lg-12">
                         <div class="alert alert-warning alert-dismissible fade show" role="alert"
@@ -55,105 +55,94 @@
                     </div>
                 </div>
             </div>
+            @endif
+
+            @php
+                $zkRate = (auth()->user()->currency && $currency) ? $currency->conversion_rate : 1;
+                $zkMoney = fn($amount) => (auth()->user()->currency && $currency)
+                    ? currencyPositionBySelectedCurrency($amount * $zkRate, auth()->user()->currency)
+                    : currencyPosition($amount);
+                $zkStatus = [
+                    'awaiting' => ['Awaiting', 'wait'], 'pending' => ['Pending', 'wait'],
+                    'processing' => ['Processing', 'run'], 'progress' => ['In progress', 'run'],
+                    'completed' => ['Completed', 'ok'], 'partial' => ['Partial', 'warn'],
+                    'canceled' => ['Canceled', 'bad'], 'refunded' => ['Refunded', 'bad'],
+                ];
+            @endphp
+
+            <div class="zk-stats-row">
+                {{-- "Add funds" already lives in the top bar; the card just shows the balance. --}}
+                <div class="zk-stat zk-stat--primary">
+                    <span class="zk-stat__icon"><i class="fa-regular fa-wallet"></i></span>
+                    <span class="zk-stat__label">@lang('Balance')</span>
+                    <strong class="zk-stat__value"><span class="notranslate">{{ $zkMoney($walletBalance) }}</span></strong>
+                    <span class="zk-stat__link"><span class="notranslate">{{ $zkMoney($totalYearDeposits) }}</span> @lang('deposited this year')</span>
+                </div>
+                <div class="zk-stat">
+                    <span class="zk-stat__icon"><i class="fa-regular fa-chart-line-up"></i></span>
+                    <span class="zk-stat__label">@lang('Total spent')</span>
+                    <strong class="zk-stat__value"><span class="notranslate">{{ $zkMoney($orders['spent'] ?? 0) }}</span></strong>
+                    <span class="zk-stat__meta">@lang('on completed and running orders')</span>
+                </div>
+                <a href="{{ route('user.order.index') }}" class="zk-stat">
+                    <span class="zk-stat__icon"><i class="fa-regular fa-spinner"></i></span>
+                    <span class="zk-stat__label">@lang('Active orders')</span>
+                    <strong class="zk-stat__value">{{ number_format($orders['active'] ?? 0) }}</strong>
+                    <span class="zk-stat__meta">{{ number_format($orders['total'] ?? 0) }} @lang('orders in total')</span>
+                </a>
+                <a href="{{ route('user.ticket.list') }}" class="zk-stat">
+                    <span class="zk-stat__icon"><i class="fa-regular fa-headset"></i></span>
+                    <span class="zk-stat__label">@lang('Open tickets')</span>
+                    <strong class="zk-stat__value">{{ number_format($tickets['pending'] ?? 0) }}</strong>
+                    <span class="zk-stat__meta">@lang('We usually reply within hours')</span>
+                </a>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-xl-8">
+                    <div class="zk-panel h-100">
+                        <div class="zk-panel__head">
+                            <h2>@lang('Recent orders')</h2>
+                            <a href="{{ route('user.order.index') }}">@lang('View all') <i class="fa-regular fa-arrow-right"></i></a>
+                        </div>
+                        @forelse($recentOrders as $order)
+                            @php [$zkLabel, $zkTone] = $zkStatus[$order->status] ?? [ucfirst($order->status), 'wait']; @endphp
+                            <div class="zk-order-row">
+                                <div class="zk-order-row__main">
+                                    <strong>{{ optional($order->service)->service_title ?? __('Service') }}</strong>
+                                    <span>#{{ $order->id }} · {{ number_format($order->quantity) }} · {{ \Illuminate\Support\Str::limit($order->link, 38) }}</span>
+                                </div>
+                                <div class="zk-order-row__side">
+                                    <span class="zk-pill zk-pill--{{ $zkTone }}">@lang($zkLabel)</span>
+                                    <span class="zk-order-row__price"><span class="notranslate">{{ $zkMoney($order->price) }}</span></span>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="zk-empty">
+                                <span class="zk-empty__icon"><i class="fa-regular fa-cart-shopping"></i></span>
+                                <h3>@lang('No orders yet')</h3>
+                                <p>@lang('Pick a service, paste your link and choose a quantity — it takes under a minute.')</p>
+                                <a href="{{ route('user.order.create') }}" class="zk-btn zk-btn--primary">@lang('Place your first order')</a>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+                <div class="col-xl-4">
+                    <div class="zk-panel h-100">
+                        <div class="zk-panel__head"><h2>@lang('How ordering works')</h2></div>
+                        <ol class="zk-steps-list">
+                            <li><span>1</span><div><strong>@lang('Add funds')</strong><p>@lang('Top up your balance with any payment method.')</p></div></li>
+                            <li><span>2</span><div><strong>@lang('Choose a service')</strong><p>@lang('Pick the platform, category and service.')</p></div></li>
+                            <li><span>3</span><div><strong>@lang('Paste link & quantity')</strong><p>@lang('We start delivering automatically.')</p></div></li>
+                        </ol>
+                        <a href="{{ route('services') }}" class="zk-btn zk-btn--ghost w-100 mt-2">@lang('See services & prices')</a>
+                    </div>
+                </div>
+            </div>
 
             <div class="row g-4">
                 <div class="col-lg-7">
-                    <div class="row g-4">
-                        <div class="col-xl-4 col-sm-6">
-                            <div class="box-card grayish-blue-card moduleRecord">
-                                <div class="top">
-                                    <div class="icon-box">
-                                        <i class="fa-regular fa-wallet"></i>
-                                    </div>
-                                    <div class="text-box">
-                                        <h5 class="title">@lang('Balance')</h5>
-                                    </div>
-                                </div>
-                                <div class="bottom">
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Wallet Balance">
-                                        <i class="fa-regular fa-money-bill"></i>
-                                        @if(optional(auth()->user())->currency && $currency)
-                                            <span
-                                                class="fw-semibold">{{ currencyPositionBySelectedCurrency($walletBalance * $currency->conversion_rate, auth()->user()->currency) }}</span>
-                                        @else
-                                            <span class="fw-semibold">  {{ currencyPosition($walletBalance) }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-4 col-sm-6">
-                            <div class="box-card strong-olive-card moduleRecord">
-                                <div class="top">
-                                    <div class="icon-box">
-                                        <i class="fa-regular fa-money-check-dollar"></i>
-                                    </div>
-                                    <div class="text-box">
-                                        <h5 class="title">@lang('Deposits')</h5>
-                                    </div>
-                                </div>
-                                <div class="bottom fw-semibold">
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Last 7 Days">
-                                        <i class="fa-regular fa-money-check-dollar"></i>
-                                        <span>
-                                             @if(auth()->user()->currency && $currency)
-                                                {{ currencyPositionBySelectedCurrency($totalLast7DaysDeposits * $currency->conversion_rate, auth()->user()->currency) }}
-                                            @else
-                                                {{ currencyPosition($totalLast7DaysDeposits) }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top" title="Total">
-                                        <i class="fa-regular fa-money-check-dollar"></i>
-                                        <span>
-                                            @if(auth()->user()->currency && $currency)
-                                                {{ currencyPositionBySelectedCurrency($totalYearDeposits * $currency->conversion_rate, auth()->user()->currency) }}
-                                            @else
-                                                {{ currencyPosition($totalYearDeposits) }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-xl-4 col-sm-6">
-                            <div class="box-card strong-orange-card moduleRecord">
-                                <div class="top">
-                                    <div class="icon-box">
-                                        <i class="fa-light fa-cart-shopping"></i>
-                                    </div>
-                                    <div class="text-box">
-                                        <h5 class="title">@lang('Orders')</h5>
-                                    </div>
-                                </div>
-
-                                <div class="bottom fw-semibold">
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Processing Order">
-                                        <i class="fa-regular fa-spinner"></i>
-                                        <span class="">{{ number_format($orders['processing'] ?? 0) }}</span>
-                                    </div>
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Confirmed Order">
-                                        <i class="fa-regular fa-box-check"></i>
-                                        <span class="">{{ number_format($orders['completed'] ?? 0) }}</span>
-                                    </div>
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Cancel Order">
-                                        <i class="fa-regular fa-rectangle-xmark"></i>
-                                        <span class="">{{ number_format($orders['canceled'] ?? 0) }}</span>
-                                    </div>
-                                </div>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class=" mt-30">
+                    <div>
                         <div class="row g-4">
                             <div class="col-xl-12">
                                 <h4 class="mb-20">@lang('Deposit Statistics')</h4>
@@ -167,35 +156,6 @@
                         <div class="col-12">
                             <h4 class="mb-20">@lang('Transaction Statistics')</h4>
                             <div id="columnChart"></div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="box-card grayish-green-card moduleRecord">
-                                <div class="top">
-                                    <div class="icon-box">
-                                        <i class="fa-regular fa-headset"></i>
-                                    </div>
-                                    <div class="text-box">
-                                        <h5 class="title">@lang('Support Tickets')</h5>
-                                    </div>
-                                </div>
-                                <div class="bottom fw-semibold">
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Pending Ticket">
-                                        <i class="fa-regular fa-spinner"></i>
-                                        <span class="">{{ number_format($tickets['pending'] ?? 0) }}</span>
-                                    </div>
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Answer Ticket">
-                                        <i class="fa-regular fa-box-check"></i>
-                                        <span class="">{{ number_format($tickets['answered'] ?? 0) }}</span>
-                                    </div>
-                                    <div class="item" data-bs-toggle="tooltip" data-bs-placement="top"
-                                         title="Close Ticket">
-                                        <i class="fa-light fa-rectangle-xmark"></i>
-                                        <span class="">{{ number_format($tickets['closed'] ?? 0) }}</span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -229,9 +189,9 @@
                                                 class="text-{{ $transaction->trx_type == "+" ? 'success'  : 'danger' }}">
                                                 {{($transaction->trx_type == "+") ? '+': '-'}}
                                                 @if(auth()->user()->currency && $currency)
-                                                    {{ currencyPositionBySelectedCurrency($transaction->amount * $currency->conversion_rate, auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($transaction->amount * $currency->conversion_rate, auth()->user()->currency) }}</span>
                                                 @else
-                                                    {{ currencyPosition($transaction->amount) }}
+                                                    <span class="notranslate">{{ currencyPosition($transaction->amount) }}</span>
                                                 @endif
 
                                             </span>
@@ -423,7 +383,7 @@
     </script>
 @endpush
 
-@if($firebaseNotify)
+@if(!empty($firebaseNotify['apiKey']))
     @push('script')
 
         <script type="module">

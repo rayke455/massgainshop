@@ -40,6 +40,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\ValidateRequestData::class,
             \App\Http\Middleware\Language::class,
             \App\Http\Middleware\PreviewThemeView::class,
+            \App\Http\Middleware\VisitorCurrency::class,
         ],
 
 

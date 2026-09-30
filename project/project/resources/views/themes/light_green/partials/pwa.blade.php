@@ -11,7 +11,7 @@
                  class="pwa-logo">
             <div class="header-text ms-3">
                 <h2>{{$pwa['single']['title']??''}}</h2>
-                <p>{{$pwa['single']['domain_name']??''}}</p>
+                <p>{{ ($pwa['single']['domain_name'] ?? '') ?: request()->getHost() }}</p>
             </div>
         </div>
         <button class="close-btn carousel_close_btn">×</button>
@@ -120,6 +120,8 @@
                 deferredPrompt = e;
 
                 const installButton = document.getElementById('installButton');
+
+                if (!installButton) return; // install popup not on this page
                 let pwaStatus = localStorage.getItem('pwa_install');
                 if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
                     $("#pwaInstallPopup").show(); // Show your modal
@@ -138,6 +140,7 @@
             });
         } else if (isFirefox) {
             const installButton = document.getElementById('installButton');
+            if (!installButton) return; // install popup not on this page
             let pwaStatus = localStorage.getItem('pwa_install');
             if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
                 $("#pwaInstallPopup").show(); // Show your modal with Firefox-specific instructions

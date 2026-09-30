@@ -97,7 +97,9 @@
                                             <div class="col-md-6">
                                                 <label for="phone_number"
                                                        class="form-label">@lang("phone number")</label><br>
-                                                <input type="hidden" id="phone_number" name="phone_code" value="+880">
+                                                {{-- Was hard-coded to +880, so every profile save set the phone code to Bangladesh. --}}
+                                                <input type="hidden" id="phone_code" name="phone_code" value="{{ old('phone_code', auth()->user()->phone_code ?: '+1') }}">
+                                                <input type="hidden" id="phone_country" name="phone_country" value="{{ old('phone_country', strtolower(auth()->user()->country_code ?: 'us')) }}">
                                                 <input id="telephone" class="form-control" name="phone" type="tel"
                                                        value="{{ old('phone', auth()->user()->phone) }}">
                                                 @error('phone')
@@ -247,15 +249,24 @@
             });
 
             const input = document.querySelector("#telephone");
+            const phoneCode = document.getElementById('phone_code');
+            const phoneCountry = document.getElementById('phone_country');
 
-            window.intlTelInput(input, {
-                initialCountry: "{{ auth()->user()->country_code }}",
+            const iti = window.intlTelInput(input, {
+                initialCountry: phoneCountry.value || "us",
                 separateDialCode: true,
             });
 
-            $('.iti__country-list li').on('click', function () {
-                $("#country").val('+' + $(this).data('dial-code'));
-            })
+            // Keep the hidden phone code in sync with the flag the customer picks.
+            const syncPhone = () => {
+                const d = iti.getSelectedCountryData();
+                if (d && d.iso2) {
+                    phoneCountry.value = d.iso2;
+                    phoneCode.value = '+' + d.dialCode;
+                }
+            };
+            input.addEventListener('countrychange', syncPhone);
+            syncPhone();
 
             $('#country_name').on('change', function () {
                 const country_name = $('#country_name').val();
@@ -268,7 +279,10 @@
             function selectedCountry(country_name) {
                 let countries = @json(config('country'));
                 let selectedCountry = countries.find(country => country.name === country_name);
-                $('#country_code').val(selectedCountry.code);
+                // New accounts have no country yet; don't crash the page.
+                if (selectedCountry) {
+                    $('#country_code').val(selectedCountry.code);
+                }
             }
         });
     </script>

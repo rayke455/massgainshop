@@ -28,6 +28,7 @@ class ApiProviderStoreRequest extends FormRequest
             'api_key' => 'required|string|min:1|max:191',
             'conversion_rate' => 'required|numeric|not_in:0',
             'status' => 'nullable|numeric|in:0,1',
+            'low_balance_alert' => 'nullable|numeric|min:0',
         ];
     }
 

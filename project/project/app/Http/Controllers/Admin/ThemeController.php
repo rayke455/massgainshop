@@ -45,6 +45,8 @@ class ThemeController extends Controller
         $basic = BasicControl::firstOrCreate();
         $basic->user_dashboard = $dashboard;
         $basic->save();
+        // basicControl() is cached indefinitely; without this the new dashboard never shows up.
+        \Cache::forget('ConfigureSetting');
 
         $message = request()->dashboard_name .' dashboard selected.';
         return response()->json(['message' => $message], 200);

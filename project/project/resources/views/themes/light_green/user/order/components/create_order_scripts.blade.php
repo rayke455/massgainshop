@@ -86,6 +86,16 @@
             },
 
             mounted() {
+                // Restore link/quantity saved when the customer went to add funds (valid for 2 hours).
+                try {
+                    const draft = JSON.parse(sessionStorage.getItem('zk_order_draft') || 'null');
+                    if (draft && Date.now() - draft.t < 2 * 3600 * 1000) {
+                        this.link = draft.link || '';
+                        setTimeout(() => { if (draft.quantity) this.quantity = draft.quantity; }, 2500);
+                        Notiflix.Notify.info(@json(__('We kept your link and quantity. Pick the same service and place the order.')));
+                    }
+                } catch (e) {}
+
                 if (this.selectedServiceFromOrder) {
                     this.getCategoryAndService(this.selectedServiceFromOrder.category.social_media_id);
                 } else {
@@ -410,7 +420,28 @@
                     }
                 },
 
+                showNeedFunds(missing, url) {
+                    Notiflix.Confirm.show(
+                        @json(__('Not enough balance')),
+                        @json(__('You need')) + ' ' + missing + ' ' + @json(__('more to place this order. Add funds now? Your order details stay here.')),
+                        @json(__('Add funds')),
+                        @json(__('Not now')),
+                        () => { window.location.href = url; },
+                        () => {},
+                        {titleColor: '#0F172A', okButtonBackground: getComputedStyle(document.documentElement).getPropertyValue('--zk-primary').trim() || '#1D4ED8', borderRadius: '14px', width: '340px'}
+                    );
+                },
+
                 placeOrder() {
+                    // Check the balance before sending anything, so people aren't left guessing.
+                    const zkTotal = Number(this.hasQuantity ? this.totalPrice : this.withoutQuantityTotalPrice) || 0;
+                    const zkBalance = Number(window.zkOrderCtx?.balance ?? Infinity);
+                    if (zkTotal > 0 && zkTotal > zkBalance) {
+                        const missing = Math.ceil((zkTotal - zkBalance) * 100) / 100;
+                        this.saveDraft();
+                        this.showNeedFunds(missing.toFixed(2) + ' ' + window.zkOrderCtx.currency, window.zkOrderCtx.addFundsUrl + '?amount=' + Math.max(1, Math.ceil(missing / window.zkOrderCtx.rate)));
+                        return;
+                    }
 
                     Notiflix.Block.standard('.pulse-loader', 'Please wait a few moments.', {
                         backgroundColor: 'rgb(191 255 221 / 20%)',
@@ -517,6 +548,7 @@
                             Notiflix.Block.remove('.pulse-loader');
 
                             if (response.data.status == 'success') {
+                                this.clearDraft();
                                 Notiflix.Notify.success(`${response.data.message}`);
                                 this.quantity = '';
                                 this.check = '';
@@ -550,7 +582,12 @@
                             }
                             if (response.data.status == 'error') {
                                 Notiflix.Block.remove('.pulse-loader');
-                                Notiflix.Notify.failure(`${response.data.message}`);
+                                if (response.data.code === 'insufficient_balance') {
+                                    this.saveDraft();
+                                    this.showNeedFunds(response.data.missing + ' ' + window.zkOrderCtx.baseCurrency, response.data.add_funds_url);
+                                } else {
+                                    Notiflix.Notify.failure(`${response.data.message}`);
+                                }
                             }
                         })
                         .catch(error => {
@@ -566,6 +603,18 @@
                                 }
                             }
                         });
+                },
+
+                // Keep link + quantity while the customer tops up, so they don't retype them.
+                saveDraft() {
+                    try {
+                        sessionStorage.setItem('zk_order_draft', JSON.stringify({
+                            link: this.link, quantity: this.quantity, service: this.selectedService, category: this.selectedCategory, t: Date.now()
+                        }));
+                    } catch (e) {}
+                },
+                clearDraft() {
+                    try { sessionStorage.removeItem('zk_order_draft'); } catch (e) {}
                 },
 
                 makeErrorRemove() {

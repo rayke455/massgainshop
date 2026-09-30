@@ -2,103 +2,157 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ApiProvider;
 use App\Models\Order;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\Log;
+use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
+/**
+ * Syncs order progress from the providers and refunds canceled / partial orders.
+ *
+ * Refunds happen exactly once: only when an order *moves into* canceled, refunded or partial,
+ * inside a locked transaction. (The old version refunded partial orders again on every run.)
+ */
 class UpdateProviderStatus extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'update-provider:status';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Update Provider Status for Order';
+    protected $description = 'Update order status from API providers and refund canceled/partial orders';
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    /** Final states: never checked again. */
+    private const FINAL = ['completed', 'refunded', 'canceled', 'partial'];
+
+    public function handle(): int
     {
-        parent::__construct();
-    }
+        $orders = Order::with('service:id,api_provider_id')
+            ->whereNotIn('status', self::FINAL)
+            ->whereNotNull('api_order_id')
+            ->whereHas('service', fn($q) => $q->whereNotNull('api_provider_id')->where('api_provider_id', '!=', 0))
+            ->get(['id', 'service_id', 'api_order_id', 'status']);
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function handle()
-    {
+        $checked = 0;
+        foreach ($orders->groupBy(fn($o) => $o->service->api_provider_id) as $providerId => $group) {
+            $provider = ApiProvider::find($providerId);
+            if (!$provider || !$provider->url || !$provider->api_key) {
+                continue;
+            }
 
-        $orders = Order::with(['service', 'service.provider', 'users'])
-            ->whereNotIn('status', ['completed', 'refunded', 'canceled'])->whereHas('service', function ($query) {
-                $query->whereNotNull('api_provider_id')->orWhere('api_provider_id', '!=', 0);
-            })->get();
-
-
-        foreach ($orders as $order) {
-            $service = $order->service;
-            if (isset($service->api_provider_id)) {
-                $apiproviderdata = $service->provider;
-                $response = Http::asForm()->post($apiproviderdata['url'], [
-                    'key' => $apiproviderdata['api_key'],
-                    'action' => 'status',
-                    'order' => $order->api_order_id,
-                ]);
-                $apidata = $response->json();
-
-                if (isset($apidata['status'])) {
-                    $order->status = (strtolower($apidata['status']) == 'in progress') ? 'progress' : strtolower($apidata['status']);
-                    $order->start_counter = @$apidata['start_count'];
-                    $order->remains = @$apidata['remains'];
-                    $order->completed_at = strtolower($apidata['status']) == 'completed' ? now() : null;
-                }
-
-                if (isset($apidata['error'])) {
-                    $order->status_description = "error: {" . @$apidata['error'] . "}";
-                }
-                $order->save();
-
-
-                if (in_array($order->status, ['partial', 'refunded', 'canceled'])) {
-                    $user = $order->user;
-
-                    if ($order->status === 'canceled') {
-                        $getBackAmo = $order->price;
-                    } elseif ($order->remains != 0) {
-                        $perOrder = $order->price / $order->quantity;
-                        $getBackAmo = $order->remains * $perOrder;
-                    } else {
-                        $getBackAmo = 0;
-                    }
-
-                    if ($getBackAmo > 0) {
-                        $user->balance += $getBackAmo;
-                        $user->save();
-
-                        $transaction = new Transaction();
-                        $transaction->user_id = $user->id;
-                        $transaction->child_panel_id = $order->child_panel_id ?? null;
-                        $transaction->trx_type = '+';
-                        $transaction->amount = $getBackAmo;
-                        $transaction->remarks = ucfirst($order->status) . " order on #{$order->id}";
-                        $transaction->charge = 0;
-                        $transaction->save();
+            foreach ($group->chunk(100) as $chunk) {
+                $statuses = $this->fetchStatuses($provider, $chunk);
+                foreach ($chunk as $order) {
+                    $data = $statuses[(string) $order->api_order_id] ?? null;
+                    if (is_array($data)) {
+                        $this->apply($order->id, $data);
+                        $checked++;
                     }
                 }
             }
         }
+
+        $this->info("Checked {$checked} order(s).");
+        return self::SUCCESS;
+    }
+
+    /** One request per 100 orders (standard SMM API v2 "orders" call), falling back to one-by-one. */
+    private function fetchStatuses(ApiProvider $provider, $chunk): array
+    {
+        $ids = $chunk->pluck('api_order_id')->map(fn($v) => (string) $v)->all();
+        try {
+            $res = Http::asForm()->timeout(40)->post($provider->url, [
+                'key' => $provider->api_key,
+                'action' => 'status',
+                'orders' => implode(',', $ids),
+            ])->json();
+            if (is_array($res) && array_intersect(array_keys($res), $ids)) {
+                return array_map(fn($v) => is_array($v) ? $v : [], $res);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        $out = [];
+        foreach ($ids as $id) {
+            try {
+                $res = Http::asForm()->timeout(25)->post($provider->url, [
+                    'key' => $provider->api_key,
+                    'action' => 'status',
+                    'order' => $id,
+                ])->json();
+                if (is_array($res)) {
+                    $out[$id] = $res;
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+        return $out;
+    }
+
+    private function apply(int $orderId, array $data): void
+    {
+        DB::transaction(function () use ($orderId, $data) {
+            $order = Order::lockForUpdate()->find($orderId);
+            if (!$order || in_array($order->status, self::FINAL, true)) {
+                return; // already finished (and refunded if needed) by another run
+            }
+
+            if (isset($data['error'])) {
+                $order->status_description = 'error: {' . $data['error'] . '}';
+                $order->save();
+                return;
+            }
+            if (!isset($data['status'])) {
+                return;
+            }
+
+            $status = strtolower(trim($data['status']));
+            $status = match ($status) {
+                'in progress', 'inprogress' => 'progress',
+                'cancelled' => 'canceled',
+                default => $status,
+            };
+
+            $order->status = $status;
+            if (isset($data['start_count']) && $data['start_count'] !== '') {
+                $order->start_counter = (int) $data['start_count'];
+            }
+            if (isset($data['remains']) && $data['remains'] !== '') {
+                $order->remains = max(0, (int) $data['remains']);
+            }
+            if ($status === 'completed') {
+                $order->completed_at = now();
+            }
+            $order->save();
+
+            // Refund what wasn't delivered — once, because these states are final.
+            $refund = match ($status) {
+                'canceled', 'refunded' => (float) $order->price,
+                'partial' => $order->quantity > 0
+                    ? (float) $order->price / (int) $order->quantity * min((int) $order->remains, (int) $order->quantity)
+                    : 0,
+                default => 0,
+            };
+
+            if ($refund > 0 && $order->user_id) {
+                $user = User::lockForUpdate()->find($order->user_id);
+                if ($user) {
+                    $user->balance += $refund;
+                    $user->save();
+
+                    $trx = new Transaction();
+                    $trx->user_id = $user->id;
+                    $trx->child_panel_id = $order->child_panel_id ?? null;
+                    $trx->trx_type = '+';
+                    $trx->amount = round($refund, 8);
+                    $trx->balance = $user->balance;
+                    $trx->remarks = ucfirst($status) . " order on #{$order->id}: undelivered part refunded";
+                    $trx->charge = 0;
+                    $trx->save();
+                }
+            }
+        });
     }
 }

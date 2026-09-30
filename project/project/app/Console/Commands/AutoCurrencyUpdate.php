@@ -21,19 +21,21 @@ class AutoCurrencyUpdate extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Update active currency rates from live market data (when enabled in Admin → Currencies)';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
+        if (!basicControl()->auto_currency_update) {
+            $this->info('Automatic currency updates are turned off.');
+            return;
+        }
+
         $currencyData = Currency::where('status', 1)->get();
+        $updated = $currencyData->isNotEmpty() ? $this->getCurrencyUpdateData($currencyData) : 0;
 
-        if ($currencyData->isNotEmpty())
-            $this->getCurrencyUpdateData($currencyData);
-
-
-        $this->info("Currency rate updated successfully.");
+        $this->info("Updated {$updated} currency rate(s) from market data.");
     }
 }

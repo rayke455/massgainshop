@@ -23,6 +23,37 @@
         </div>
 
 
+        @php $ps = $profitSummary; @endphp
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="card card-body h-100">
+                    <span class="text-muted small">@lang('Active services')</span>
+                    <span class="h3 mb-0">{{ number_format($ps['active']) }}</span>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-body h-100">
+                    <span class="text-muted small">@lang('Average margin')</span>
+                    <span class="h3 mb-0 text-success">{{ $ps['avg_margin'] !== null ? number_format($ps['avg_margin'], 0) . '%' : '—' }}</span>
+                    <span class="small text-muted">@lang('on top of provider cost')</span>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-body h-100">
+                    <span class="text-muted small">@lang('Average profit')</span>
+                    <span class="h3 mb-0 text-success">{{ $ps['avg_profit'] !== null ? zkPerK($ps['avg_profit']) : '—' }}</span>
+                    <span class="small text-muted">@lang('per 1,000 sold')</span>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-body h-100 {{ $ps['losing'] ? 'border-danger' : '' }}">
+                    <span class="text-muted small">@lang('Needs attention')</span>
+                    <span class="h3 mb-0 {{ $ps['losing'] ? 'text-danger' : '' }}">{{ $ps['losing'] }} <small class="fs-6">@lang('selling at a loss')</small></span>
+                    <span class="small text-muted">{{ $ps['no_cost'] }} @lang('without a cost price')</span>
+                </div>
+            </div>
+        </div>
+
         <div class="d-grid d-sm-flex justify-content-md-end align-items-sm-center gap-2 mb-4">
 
             <div id="datatableCounterInfo" style="display: none;">
@@ -196,7 +227,9 @@
                                         <th>@lang('ID')</th>
                                         <th>@lang('Name')</th>
                                         <th>@lang('Provider')</th>
-                                        <th>@lang('Price')</th>
+                                        <th class="text-end">@lang('Cost') <small class="text-muted">/1k</small></th>
+                                        <th class="text-end">@lang('You sell') <small class="text-muted">/1k</small></th>
+                                        <th class="text-end">@lang('Profit') <small class="text-muted">/1k</small></th>
                                         <th>@lang('Drip Feed')</th>
                                         <th>@lang('Status')</th>
                                         <th>@lang('Action')</th>
@@ -216,14 +249,31 @@
                                             <td>{{ $service->id }}</td>
                                             <td>@lang(Str::limit($service->service_title, 100))</td>
                                             <td>{{ optional($service->provider)->api_name ?? 'Manual' }}</td>
-                                            <td>{{ currencyPosition($service->price) }}</td>
+                                            @php
+                                                $zkCost = $service->original_price !== null && $service->original_price !== '' ? (float) $service->original_price : null;
+                                                $zkSell = (float) $service->price;
+                                                $zkProfit = $zkCost !== null ? $zkSell - $zkCost : null;
+                                                $zkMargin = ($zkCost && $zkCost > 0) ? ($zkProfit / $zkCost) * 100 : null;
+                                            @endphp
+                                            <td class="text-end text-muted">{{ $zkCost !== null ? zkPerK($zkCost) : '—' }}</td>
+                                            <td class="text-end fw-semibold">{{ zkPerK($zkSell) }}</td>
+                                            <td class="text-end">
+                                                @if($zkProfit === null)
+                                                    <span class="badge bg-soft-secondary text-secondary" title="@lang('Set the cost when editing this service to see your profit')">@lang('No cost set')</span>
+                                                @elseif($zkProfit < 0)
+                                                    <span class="badge bg-soft-danger text-danger">{{ zkPerK($zkProfit) }} · @lang('loss')</span>
+                                                @else
+                                                    <span class="text-success fw-semibold">+{{ zkPerK($zkProfit) }}</span>
+                                                    @if($zkMargin !== null)<small class="text-muted d-block">{{ number_format($zkMargin, 0) }}% @lang('margin')</small>@endif
+                                                @endif
+                                            </td>
                                             <td>
                                                 <span
                                                     class="badge bg-soft-{{ $service->drip_feed == 1 ? 'primary' : 'secondary' }} text-{{ $service->drip_feed == 1 ? 'primary' : 'secondary' }}">
                                                     <span
                                                         class="legend-indicator bg-{{ $service->drip_feed == 1 ? 'primary' : 'secondary' }}">
                                                     </span>
-                                                    {{ $service->drip_feed == 1 ? 'Active' : 'Inactive' }}
+                                                    {{ $service->drip_feed == 1 ? __('Yes') : __('No') }}
                                                 </span>
                                             </td>
                                             <td>
@@ -286,7 +336,7 @@
             </div>
         @empty
             <tr class="odd">
-                <td valign="top" colspan="8" class="dataTables_empty">
+                <td valign="top" colspan="10" class="dataTables_empty">
                     <div class="text-center p-4">
                         <img class="mb-3 dataTables-image"
                              src="{{ asset('assets/admin/img/oc-error.svg') }}" alt="Image Description"

@@ -99,6 +99,7 @@ class BlogController extends Controller
 
     public function edit($id, $language = null): \Illuminate\Contracts\View\Factory|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
     {
+        $language = $language ?: \App\Models\Language::where('default_status', 1)->value('id'); // links without a language would crash
         try {
             $blog = Blog::with(['details' => function ($query) use ($language) {
                 $query->where('language_id', $language);

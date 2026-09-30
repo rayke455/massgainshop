@@ -10,12 +10,15 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="{{ asset(template(true). "css/bootstrap.min.css") }}"/>
-    <link rel="stylesheet" href="{{ asset(template(true). 'css/fontawesome.min.css') }}"/>
     <link rel="stylesheet" href="{{ asset(template(true). 'css/all.min.css') }}"/>
     <link rel="stylesheet" href="{{ asset('assets/global/css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/global/css/flatpickr.min.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/user-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset(template(true). 'css/zirka-app.css') }}">
 
     @stack('css-lib')
 
@@ -25,11 +28,7 @@
 
 </head>
 
-<body onload="preloaderFunction()">
-
-<div id="preloader">
-    <img class="preloader-image" src="{{ asset(template(true). 'img/preloader/preloader.png') }}" alt="">
-</div>
+<body class="zk-app">
 
 
 @if(env('IS_DEMO') == true)
@@ -39,13 +38,19 @@
 @endif
 
 
-@include(template().'user.partials.navbar')
+@include(template().'user.partials.sidebar')
+
+<div class="zk-shell">
+    @include(template().'user.partials.navbar')
+
+    <main class="zk-main">
+        @yield('content')
+    </main>
+
+    @include(template().'user.partials.footer')
+</div>
 
 @include(template().'user.partials.mobile_nav')
-
-@yield('content')
-
-@include(template().'user.partials.footer')
 
 <script src="{{ asset('assets/global/js/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ asset(template(true). 'js/bootstrap.bundle.min.js') }}"></script>
@@ -62,6 +67,9 @@
 @stack('script')
 
 @include(template().'user.partials.pwa')
+@include(template().'partials.geo')
+@include(template().'partials.auto_translate')
+@include(template().'partials.auto_currency')
 
 @include('plugins')
 

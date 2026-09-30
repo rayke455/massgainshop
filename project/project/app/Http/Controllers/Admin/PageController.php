@@ -112,6 +112,7 @@ class PageController extends Controller
 
     public function edit($id, $theme, $language = null)
     {
+        $language = $language ?: \App\Models\Language::where('default_status', 1)->value('id'); // links without a language would crash
         abort_if(!in_array($theme, getThemesNames()), 404);
         $page = Page::with(['details' => function ($query) use ($language) {
             $query->where('language_id', $language);
@@ -247,6 +248,7 @@ class PageController extends Controller
 
     public function editStaticPage($id, $theme, $language = null)
     {
+        $language = $language ?: \App\Models\Language::where('default_status', 1)->value('id'); // links without a language would crash
         $data['allLanguage'] = Language::select('id', 'name', 'short_name', 'flag', 'flag_driver')->where('status', 1)->get();
         $data['pageEditableLanguage'] = Language::where('id', $language)->select('id', 'name', 'short_name')->first();
         $data['page'] = Page::with(['details' => function ($query) use ($language) {

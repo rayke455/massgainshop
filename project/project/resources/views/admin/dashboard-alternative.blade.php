@@ -2,6 +2,8 @@
 @section('page_title', __('Dashboard'))
 @section('content')
     <div class="content container-fluid dashboard-height">
+        {{-- Push-notification prompt only when Firebase is configured (otherwise it errors and can never work) --}}
+        @if(!empty($firebaseNotify['apiKey']))
         <div id="firebase-app">
             <div class="shadow p-3 mb-5 alert-soft-blue mb-4 mb-lg-7" role="alert"
                  v-if="notificationPermission == 'default' && !is_notification_skipped" v-cloak>
@@ -55,7 +57,11 @@
                 </div>
             </div>
         </div>
+        @endif
 
+
+        @include('admin.partials.dashboard.health')
+        @include('admin.partials.dashboard.profit')
 
         <div class="row">
             @include('admin.partials.dashboard.recentTran')
@@ -340,7 +346,7 @@
     </script>
 @endpush
 
-@if($firebaseNotify)
+@if(!empty($firebaseNotify['apiKey']))
     @push('script')
         <script type="module">
 

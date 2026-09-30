@@ -64,7 +64,7 @@
                                     <div class="col-md-6">
                                         <label for="codeLabel" class="form-label">@lang('Code')</label>
                                         <input type="text" class="form-control  @error('code') is-invalid @enderror"
-                                               name="code" id="codeLabel" placeholder="@lang("Code")"
+                                               name="code" id="codeLabel" placeholder="@lang("e.g. EUR, KES, BTC")"
                                                aria-label="@lang("Code")"
                                                autocomplete="off"
                                                value="{{ old('code') }}">
@@ -81,6 +81,12 @@
                                             <span class="input-group-text">1 {{ basicControl()->base_currency }}</span>
                                             <input type="text" name="conversion_rate" class="form-control"
                                                    placeholder="0.0" aria-label="0.0" autocomplete="off">
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                            <button type="button" class="btn btn-sm btn-soft-primary" id="zkUseMarketRate">
+                                                <i class="bi-graph-up-arrow me-1"></i>@lang("Use market rate")
+                                            </button>
+                                            <small class="text-muted" id="zkMarketNote">@lang("Fills in today's live rate for this code.")</small>
                                         </div>
                                         @error('conversion_rate')
                                         <span class="invalid-feedback d-block">{{ $message }}</span>
@@ -108,7 +114,7 @@
                                                     <input
                                                         class="form-check-input @error('status') is-invalid @enderror"
                                                         type="checkbox" name="status" id="categoryStatus"
-                                                        value="1">
+                                                        value="1" {{ old('status', 1) ? 'checked' : '' }}>
                                                     <label class="form-check-label text-center"
                                                            for="categoryStatus"></label>
                                                 </span>
@@ -129,4 +135,5 @@
             </div>
         </div>
     </div>
+    @include('admin.currency.components.market_autofill')
 @endsection

@@ -31,9 +31,9 @@ class Payment
                 'email' => optional($deposit->user)->email ?? optional($deposit->depositable)->email ?? $basic->sender_email,
             ],
             'back_urls' => [
-                'success' => 'https://bugfinder.net/',
+                'success' => route('success'),
                 'pending' => '',
-                'failure' => 'https://bugfinder.net/',
+                'failure' => route('failed'),
             ],
             'notification_url' => route('ipn', [$deposit->child_panel_id ? $gateway->gateway->code : $gateway->code, $deposit->trx_id]),
             'auto_return' => 'approved',

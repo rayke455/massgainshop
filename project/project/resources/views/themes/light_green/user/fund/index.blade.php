@@ -18,7 +18,7 @@
 
             <div class="card mt-50">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
-                    <h4 class="mb-0">@lang("Deposit History")</h4>
+                    <h4 class="mb-0 d-none d-md-block">@lang("Deposit History")</h4>
                     <div class="btn-area">
                         <button type="button" class="cmn-btn rounded-1" data-bs-toggle="offcanvas"
                                 data-bs-target="#depositFilter" aria-controls="depositFilter">@lang("Filter")<i
@@ -50,16 +50,16 @@
                                             </td>
                                             <td data-label="@lang("Amount")">
                                                 @if(auth()->user()->currency)
-                                                    {{ currencyPositionBySelectedCurrency($deposit->payable_amount_in_base_currency * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($deposit->payable_amount_in_base_currency * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 @else
-                                                    {{ currencyPosition($deposit->payable_amount_in_base_currency) }}
+                                                    <span class="notranslate">{{ currencyPosition($deposit->payable_amount_in_base_currency) }}</span>
                                                 @endif
                                             </td>
                                             <td data-label="@lang("Charge")">
                                                 @if(auth()->user()->currency)
-                                                    {{ currencyPositionBySelectedCurrency($deposit->base_currency_charge * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($deposit->base_currency_charge * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 @else
-                                                    {{ currencyPosition($deposit->base_currency_charge) }}
+                                                    <span class="notranslate">{{ currencyPosition($deposit->base_currency_charge) }}</span>
                                                 @endif
                                             </td>
                                             <td data-label="@lang("Status")">

@@ -28,7 +28,19 @@ class OrderStoreRequest extends FormRequest
         $rules = [
             'category' => 'required|integer|exists:categories,id',
             'service' => 'required|integer|exists:services,id',
-            'link' => 'required',
+            'link' => [
+                'required',
+                'max:2000',
+                function ($attribute, $value, $fail) {
+                    // Browser-side checks can be bypassed; at least make sure this is a real web link.
+                    $ok = !preg_match('/\s/', (string)$value)
+                        && filter_var($value, FILTER_VALIDATE_URL)
+                        && preg_match('#^https?://[^/]+\.[a-z]{2,}#i', (string)$value);
+                    if (!$ok) {
+                        $fail(__('Please paste a full link, e.g. https://instagram.com/yourname. Open the app, tap Share → Copy link.'));
+                    }
+                },
+            ],
             'order_type' => 'required|string',
             'order_notes' => 'nullable|string|max:2000',
             'check' => 'required',
@@ -174,11 +186,26 @@ class OrderStoreRequest extends FormRequest
         return $rules;
     }
 
+    /** Trim the link and add https:// when people paste "instagram.com/name". */
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('link')) {
+            $link = trim((string)$this->input('link'));
+            if (!preg_match('#^https?://#i', $link) && preg_match('#^[a-z0-9-]+(\.[a-z0-9-]+)+(/|$)#i', $link)) {
+                $link = 'https://' . $link;
+            }
+            $this->merge(['link' => $link]);
+        }
+    }
+
     public function messages(): array
     {
         return [
-            'category.required' => 'The category field is required',
-            'service.required' => 'The service field is required',
+            'category.required' => 'Please choose a category.',
+            'service.required' => 'Please choose a service.',
+            'link.required' => 'Paste the link to your profile or post.',
+            'check.required' => 'Please confirm the link is correct and the account is public.',
+            'quantity.required' => 'Enter how many you want.',
         ];
     }
 

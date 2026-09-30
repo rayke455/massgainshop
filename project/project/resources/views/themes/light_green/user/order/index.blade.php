@@ -4,7 +4,7 @@
     <div class="dashboard-wrapper">
         <div class="container">
             <div class="breadcrumb-area">
-                <h4 class="title">@lang("All Order")</h4>
+                <h4 class="title">@lang("My orders")</h4>
                 <ul class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ route('user.dashboard') }}">
                             <i class="fa-light fa-house"></i> @lang("Home")</a>
@@ -73,7 +73,7 @@
 
             <div class="card mt-10">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
-                    <h4 class="mb-0">@lang("All Order")</h4>
+                    <h4 class="mb-0 d-none d-md-block">@lang("My orders")</h4>
                     <div class="btn-area">
                         <button type="button" class="cmn-btn rounded-1" data-bs-toggle="offcanvas"
                                 data-bs-target="#orderFilter" aria-controls="orderFilter">@lang("Filter")<i
@@ -105,7 +105,7 @@
                                            #{{ $order->id }}
                                         </span>
                                             </td>
-                                            <td data-label="@lang("Order Details")">
+                                            <td data-label="@lang("Order Details")" class="zk-td-full">
                                             <span>
                                                 <h5>@lang(Str::limit(optional($order->service)->service_title, 30))</h5>
                                                 @lang('Link'): @lang(Str::limit($order->link,30))<br>
@@ -116,19 +116,19 @@
                                             <td data-label="@lang("Price")">
                                                 @if(auth()->user()->currency)
                                                     <span>
-                                                    {{ currencyPositionBySelectedCurrency($order->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($order->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 </span>
                                                 @else
                                                     <span>
-                                                    {{ currencyPosition($order->price) }}
+                                                    <span class="notranslate">{{ currencyPosition($order->price) }}</span>
                                                 </span>
                                                 @endif
                                             </td>
-                                            <td data-label="@lang("Start Counter")">@lang($order->start_counter ?? 'N/A')</td>
-                                            <td data-label="@lang("Remains")">@lang($order->remains ?? 'N/A' )</td>
-                                            <td data-label="@lang("Order AT")">{{ dateTime($order->created_at) }}</td>
+                                            <td data-label="@lang("Start Counter")" class="{{ $order->start_counter === null ? 'zk-td-empty' : '' }}">@lang($order->start_counter ?? 'N/A')</td>
+                                            <td data-label="@lang("Remains")" class="{{ $order->remains === null ? 'zk-td-empty' : '' }}">@lang($order->remains ?? 'N/A' )</td>
+                                            <td data-label="@lang("Date")">{{ dateTime($order->created_at) }}</td>
 
-                                            <td data-label="@lang("status")">
+                                            <td data-label="@lang("Status")">
                                                 @if($order->status == 'awaiting')
                                                     <span>
                                                     <span class="badge text-bg-dark">@lang("Awaiting")</span>

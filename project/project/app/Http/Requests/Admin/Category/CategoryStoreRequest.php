@@ -22,10 +22,15 @@ class CategoryStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|min:1|max:255',
-            'social_media' => 'required|integer|exists:social_media,id',
+            'name' => 'required|string|min:1|max:255|unique:categories,category_title',
+            'social_media' => 'nullable|integer|exists:social_media,id', // empty = detect from the name
             'status' => 'nullable|numeric|in:0,1',
-            'image' => 'required|image|mimes:jpg,jpeg,png|max:4096'
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096'
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['name.unique' => 'A category with this name already exists.'];
     }
 }

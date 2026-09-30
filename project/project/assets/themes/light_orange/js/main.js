@@ -12,10 +12,7 @@ window.addEventListener("scroll", function () {
     // console.log(scrollpos);
  });
 // // preloader_area
-var preloader = document.getElementById("preloader");
-function preloder_function(){
-    preloader.style.display= "none";
-}
+function preloder_function(){} // preloader removed
 
 $(document).ready(function () {
     // faq_area_start

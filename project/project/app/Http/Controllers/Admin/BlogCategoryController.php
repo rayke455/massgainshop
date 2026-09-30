@@ -49,6 +49,7 @@ class BlogCategoryController extends Controller
 
     public function edit(string $id, $language = null): \Illuminate\Contracts\View\Factory|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
     {
+        $language = $language ?: \App\Models\Language::where('default_status', 1)->value('id'); // links without a language would crash
         try {
             $data['pageEditableLanguage'] = Language::where('id', $language)
                 ->select('id', 'name', 'short_name')

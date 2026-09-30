@@ -56,7 +56,7 @@ class UsersController extends Controller
 
     public function search(Request $request)
     {
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterStatus = $request->filterStatus;
         $filterName = $request->filterName;
         $filterEmailVerification = $request->filterEmailVerification;
@@ -575,7 +575,7 @@ class UsersController extends Controller
     public function userTransactionSearch(Request $request, $id)
     {
         $basicControl = basicControl();
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterTransactionId = $request->filterTransactionID;
         $filterDate = explode('-', $request->filterDate);
         $startDate = $filterDate[0];
@@ -650,7 +650,7 @@ class UsersController extends Controller
         $filterTransactionId = $request->filterTransactionID;
         $filterStatus = $request->filterStatus;
         $filterMethod = $request->filterMethod;
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
 
         $filterDate = explode('-', $request->filterDate);
         $startDate = $filterDate[0];

@@ -992,6 +992,7 @@ if (!function_exists('getFooterMenuData')) {
     {
         $menu = ManageMenu::where('theme', basicControl()->theme)->where('menu_section', 'footer')->first();
         $menuData = [];
+        $flattenedMenuData = [];
 
         if (isset($menu->menu_items[$type])) {
             foreach ($menu->menu_items[$type] as $key => $menuItem) {
@@ -1304,4 +1305,101 @@ if (!function_exists('extractAverageStartTimeInMinutes')) {
 
 
 
+
+
+if (!function_exists('zkHighlight')) {
+    /**
+     * Two-tone headings for the Zirka theme: text inside [brackets] is highlighted.
+     * Without brackets the last two words are highlighted. Output is escaped.
+     */
+    function zkHighlight($text)
+    {
+        // Content is stored HTML-encoded (e.g. &amp;); decode first so e() doesn't double-escape.
+        $text = trim(html_entity_decode(strip_tags((string)$text), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($text === '') {
+            return '';
+        }
+        $safe = e($text);
+        if (preg_match('/\[(.+?)\]/u', $safe)) {
+            return preg_replace('/\[(.+?)\]/u', '<span class="zk-hl">$1</span>', $safe);
+        }
+        $words = preg_split('/\s+/u', $safe);
+        if (count($words) < 3) {
+            return $safe;
+        }
+        $tail = array_splice($words, -2);
+        return implode(' ', $words) . ' <span class="zk-hl">' . implode(' ', $tail) . '</span>';
+    }
+}
+
+if (!function_exists('zkPerK')) {
+    /** Per-1,000 prices are often tiny (0.0012): show up to 4 decimals, at least 2, with the base currency. */
+    function zkPerK($amount, $currency = null)
+    {
+        $decimals = 4;
+        $value = round((float)$amount, 4);
+        // Use only as many decimals as needed, but never fewer than 2 (4 → 4.00, 0.2086 → 0.2086, 0.25 → 0.25).
+        while ($decimals > 2 && round($value, $decimals - 1) == $value) {
+            $decimals--;
+        }
+        return number_format($value, $decimals, '.', ',') . ' ' . ($currency ?? basicControl()->base_currency);
+    }
+}
+
+if (!function_exists('zkBrand')) {
+    /** Brand icon + colour for a platform name ("Instagram" → ['instagram', '#E1306C']); null if unknown. */
+    function zkBrand($name)
+    {
+        $n = strtolower((string)$name);
+        $map = [
+            'instagram' => ['instagram', '#E1306C'], 'tiktok' => ['tiktok', '#111111'], 'youtube' => ['youtube', '#FF0000'],
+            'facebook' => ['facebook-f', '#1877F2'], 'telegram' => ['telegram', '#229ED9'], 'twitter' => ['twitter', '#0F172A'],
+            'spotify' => ['spotify', '#1DB954'], 'linkedin' => ['linkedin-in', '#0A66C2'], 'twitch' => ['twitch', '#9146FF'],
+            'snapchat' => ['snapchat', '#E6C200'], 'discord' => ['discord', '#5865F2'], 'whatsapp' => ['whatsapp', '#25D366'],
+            'pinterest' => ['pinterest-p', '#E60023'], 'reddit' => ['reddit-alien', '#FF4500'], 'soundcloud' => ['soundcloud', '#FF5500'],
+            'threads' => ['at', '#111111'], 'kick' => ['kickstarter-k', '#53FC18'],
+        ];
+        foreach ($map as $key => $brand) {
+            if (str_contains($n, $key)) {
+                return $brand;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('zkVisitorCurrency')) {
+    /** The currency this visitor sees prices in: their account setting, else their saved/auto-picked choice, else null (base). */
+    function zkVisitorCurrency()
+    {
+        static $resolved = false, $currency = null;
+        if ($resolved) {
+            return $currency;
+        }
+        $resolved = true;
+
+        $code = null;
+        if (auth()->check()) {
+            $code = auth()->user()->currency ?: null;
+        }
+        if (!$code && ($raw = request()->cookie('currency'))) {
+            $code = optional(json_decode($raw))->code;
+        }
+        if ($code && $code !== basicControl()->base_currency) {
+            // Always use today's rate (the cookie may hold an old one).
+            $currency = \App\Models\Currency::where('code', $code)->where('status', 1)->first();
+        }
+        return $currency;
+    }
+}
+
+if (!function_exists('zkShowPrice')) {
+    /** A base-currency amount shown in the visitor's currency, e.g. "KSh 54.10". */
+    function zkShowPrice($amount)
+    {
+        // Per-1k prices can be fractions of a cent, so keep up to 4 decimals ("0.0018 USD", not "0 USD").
+        $c = zkVisitorCurrency();
+        return $c ? zkPerK((float) $amount * (float) $c->conversion_rate, $c->code) : zkPerK($amount);
+    }
+}
 

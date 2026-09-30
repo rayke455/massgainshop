@@ -43,7 +43,7 @@
                                         </td>
                                         <td data-label="@lang('Amount')">
                                             <span class="font-weight-bold text-success">
-                                                {{ currencyPosition($bonus->amount) }}
+                                                <span class="notranslate">{{ currencyPosition($bonus->amount) }}</span>
                                             </span>
                                         </td>
                                         <td data-label="@lang('Remarks')">

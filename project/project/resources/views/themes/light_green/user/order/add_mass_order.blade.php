@@ -21,7 +21,7 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <h4>@lang("mass order")</h4>
+                            <h4>@lang("Paste your orders")</h4>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">

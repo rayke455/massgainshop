@@ -49,6 +49,34 @@ class Order extends Model
         'order_type_info' => 'object',
     ];
 
+    /** Services priced per 1,000; everything else (packages, subscriptions…) is a flat price. */
+    public const QUANTITY_BASED_TYPES = [
+        'Default', 'Mentions', 'Mentions with Hashtags', 'Custom Comments', 'Mentions Custom List', 'Mentions Hashtag',
+        'Mentions User Followers', 'Mentions Media Likers', 'Comment Likes', 'Poll', 'Invites from Groups', 'Web Traffic',
+    ];
+
+    /**
+     * Remember what the provider charges for this order at the moment it's placed (base currency),
+     * so reports can show real profit (price - provider_cost) even after provider prices change.
+     * Works for every place that creates orders: website, mass order, reseller API, admin.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if ($order->provider_cost !== null || !$order->service_id) {
+                return;
+            }
+            $service = Service::find($order->service_id, ['id', 'original_price', 'service_type']);
+            if (!$service || $service->original_price === null || $service->original_price === '') {
+                return;
+            }
+            $cost = (float)$service->original_price;
+            $order->provider_cost = in_array($service->service_type ?: 'Default', self::QUANTITY_BASED_TYPES, true)
+                ? round($cost * (float)$order->quantity / 1000, 8)
+                : round($cost, 8);
+        });
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

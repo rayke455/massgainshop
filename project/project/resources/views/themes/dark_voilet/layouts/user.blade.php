@@ -27,13 +27,7 @@
 
 </head>
 
-<body onload="preloaderFunction()">
-
-<!-- Preloader section start -->
-<div id="preloader">
-    <img class="preloader-image" src="{{ asset(template(true). 'img/preloader/preloader.png') }}" alt="">
-</div>
-<!-- Preloader section end -->
+<body>
 
 @if(env('IS_DEMO') == true)
     <div class="">

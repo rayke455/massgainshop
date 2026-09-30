@@ -28,7 +28,7 @@ class CategoryController extends Controller
 
     public function categoryShowingWithDatatable(Request $request)
     {
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterStatus = $request->filterStatus;
         $filterName = $request->filterName;
 
@@ -126,10 +126,14 @@ class CategoryController extends Controller
                 throw_if(empty($image['path']), 'Image could not be uploaded.');
             }
 
+            // No platform chosen: work it out from the name ("Instagram Likes" → Instagram), creating it if needed.
+            $platformId = $request->social_media
+                ?: optional(app(\App\Http\Controllers\Admin\ServiceController::class)->findSocialMedia($request->name, $request->name))->id;
+
             $categoryRes = Category::create([
-                'social_media_id' => $request->social_media,
+                'social_media_id' => $platformId,
                 'category_title' => $request->name,
-                'status' => $request->status,
+                'status' => $request->status ?? 1,
                 'image' => $image['path'] ?? null,
                 'image_driver' => $image['driver'] ?? null
             ]);
@@ -172,10 +176,13 @@ class CategoryController extends Controller
                 throw_if(empty($image['path']), 'Image could not be uploaded.');
             }
 
+            $platformId = $request->social_media
+                ?: optional(app(\App\Http\Controllers\Admin\ServiceController::class)->findSocialMedia($request->name, $request->name))->id;
+
             $categoryRes = $category->update([
-                'social_media_id' => $request->social_media,
+                'social_media_id' => $platformId,
                 'category_title' => $request->name,
-                'status' => $request->status,
+                'status' => $request->status ?? 0,
                 'image' => $image['path'] ?? $category->image,
                 'image_driver' => $image['driver'] ?? $category->image_driver
             ]);

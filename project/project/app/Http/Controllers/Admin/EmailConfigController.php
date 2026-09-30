@@ -25,6 +25,7 @@ class EmailConfigController extends Controller
             $data['basicControl'] = basicControl();
             $mailMethod = config('mailconfig');
             $mailParameters = $mailMethod[$method] ?? null;
+            abort_if($mailParameters === null, 404); // unknown mail method in the URL
             return view('admin.email_controls.email_config', $data, compact('mailParameters', 'method'));
 
         } catch (\Exception $exception) {

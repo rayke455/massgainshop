@@ -118,6 +118,7 @@ class OrderController extends Controller
             $service = Service::userRate()->find($request->service);
 
             if (!$service) {
+                DB::rollBack();
                 return response([
                     'status' => 'error',
                     'message' => 'Selected service not found.'
@@ -146,18 +147,28 @@ class OrderController extends Controller
             }
 
             $userRate = $service->user_rate ?? $service->price;
-            $price = round(($quantity * $userRate) / 1000, basicControl()->fraction_number);
+            // Packages/subscriptions are a flat price. Never take the price from the request:
+            // a customer could send 0 or a negative number and get free orders or extra balance.
+            $price = $isQuantityBased
+                ? round(($quantity * $userRate) / 1000, basicControl()->fraction_number)
+                : round((float)$userRate, basicControl()->fraction_number);
+
+            if ($price < 0) {
+                DB::rollBack();
+                return response(['status' => 'error', 'message' => 'Invalid price for this service.']);
+            }
 
             $user = Auth::user();
             if ($user->balance < $price) {
+                DB::rollBack();
+                $missing = round($price - $user->balance, 2);
                 return response([
                     'status' => 'error',
-                    'message' => 'Insufficient balance in your wallet.'
+                    'code' => 'insufficient_balance',
+                    'message' => 'Not enough balance for this order. You need ' . currencyPosition($missing) . ' more.',
+                    'missing' => $missing,
+                    'add_funds_url' => route('user.add.fund', ['amount' => max(1, ceil($missing))]),
                 ]);
-            }
-
-            if (!$isQuantityBased) {
-                $price = $request->price ?? 0;
             }
 
             $order = Order::create([

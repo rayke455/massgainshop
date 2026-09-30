@@ -72,7 +72,7 @@
 
             <div class="card mt-10">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
-                    <h4 class="mb-0">@lang("All Orders")</h4>
+                    <h4 class="mb-0 d-none d-md-block">@lang("All Orders")</h4>
                     <div class="btn-area">
                         <button type="button" class="cmn-btn rounded-1" data-bs-toggle="offcanvas"
                                 data-bs-target="#orderFilter" aria-controls="orderFilter">@lang("Filter")<i
@@ -115,11 +115,11 @@
                                             <td data-label="@lang("Price")">
                                                 @if(auth()->user()->currency)
                                                     <span>
-                                                    {{ currencyPositionBySelectedCurrency($order->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($order->price * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 </span>
                                                 @else
                                                     <span>
-                                                    {{ currencyPosition($order->price) }}
+                                                    <span class="notranslate">{{ currencyPosition($order->price) }}</span>
                                                 </span>
                                                 @endif
                                             </td>

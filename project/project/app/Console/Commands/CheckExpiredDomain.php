@@ -53,8 +53,8 @@ class CheckExpiredDomain extends Command
                             'transactional_id' => $panel->id,
                             'transactional_type' => ChildPanel::class,
                             'user_id' => optional($panel->user)->id,
-                            'trx_type' => '+',
-                            'amount' => $panel->price,
+                            'trx_type' => '-', // renewal is charged to the user
+                            'amount' => $childPanelPrice,
                             'remarks' => 'Renewed child panel',
                             'charge' => 0
                         ]);

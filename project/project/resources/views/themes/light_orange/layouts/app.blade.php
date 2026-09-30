@@ -58,13 +58,7 @@
     @laravelPWA
 </head>
 
-<body onload="preloder_function()" class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}">
-
-<!-- preloader_area_start -->
-<div id="preloader">
-    <div id="loader"></div>
-</div>
-<!-- preloader_area_end -->
+<body class="{{ session()->get('rtl') == 1 ? 'rtl' : '' }}">
 
 @include(template().'partials.header')
 

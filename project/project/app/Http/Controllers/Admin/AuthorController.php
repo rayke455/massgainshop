@@ -77,6 +77,7 @@ class AuthorController extends Controller
 
     public function edit(string $id, $language = null)
     {
+        $language = $language ?: \App\Models\Language::where('default_status', 1)->value('id'); // links without a language would crash
         try {
             $data['pageEditableLanguage'] = Language::where('id', $language)
                 ->select('id', 'name', 'short_name')

@@ -19,6 +19,13 @@
                 </div>
             </div>
         </div>
+        @include('admin.services.components.quick_import')
+
+        <details class="zq-advanced mb-4">
+            <summary class="h5 mb-3">@lang('Advanced: import whole provider categories or single services')</summary>
+            @include('admin.services.components.import_by_category')
+
+            <h5 class="mb-2">@lang('Or pick individual services')</h5>
         <div class="card">
             <div class="card-header card-header-content-md-between">
                 <div class="mb-2 mb-md-0">
@@ -26,8 +33,8 @@
                         <div class="input-group-prepend input-group-text">
                             <i class="bi-search"></i>
                         </div>
-                        <input id="datatableSearch" type="search" class="form-control" placeholder="Search users"
-                               aria-label="Search users" autocomplete="off">
+                        <input id="datatableSearch" type="search" class="form-control" placeholder="Search services"
+                               aria-label="Search services" autocomplete="off">
                     </div>
                 </div>
 
@@ -125,6 +132,7 @@
             </div>
 
         </div>
+        </details>
     </div>
 
 
@@ -147,7 +155,7 @@
                                     data-hs-tom-select-options='{
                                     "placeholder": ""
                                 }'>
-                                <option value="100" selected>@lang('100%')</option>
+                                <option value="30" selected>@lang('30% (suggested)')</option>
                                 @for($loop = 0; $loop <= 1000; $loop++)
                                     <option value="{{$loop }}">{{ $loop }} %</option>
                                 @endfor
@@ -170,7 +178,7 @@
                             </div>
                         </div>
 
-                        <p class="mt-3">@lang("Are you really want to import service?")</p>
+                        <div class="zk-profit-preview mt-3" id="zkSinglePreview" aria-live="polite"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-sm btn-white"
@@ -231,7 +239,7 @@
                                         "hidePlaceholderOnSearch": true,
                                         "placeholder": ""
                                       }'>
-                                    <option value="100" selected>@lang('100%')</option>
+                                    <option value="30" selected>@lang('30% (suggested)')</option>
                                     @for($loop = 0; $loop <= 1000; $loop++)
                                         <option value="{{ $loop }}">{{ $loop }} %</option>
                                     @endfor
@@ -239,7 +247,7 @@
                             </div>
                         </div>
 
-                        <p>@lang('Are you really want to import all service?')</p>
+                        <div class="zk-profit-preview" id="zkBulkPreview" aria-live="polite"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-sm btn-white"
@@ -254,6 +262,16 @@
 
 @endsection
 
+
+@push('style')
+    <style>
+        .zk-profit-preview { border: 1px solid rgba(231, 234, 243, .9); border-radius: 12px; padding: 12px 14px; background: #f9fafc; }
+        .zk-pp-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 14px; }
+        .zk-pp-row span { color: #677788; }
+        .zk-pp-profit { border-top: 1px dashed rgba(140, 152, 164, .4); margin-top: 4px; padding-top: 6px; }
+        .zk-pp-profit strong { color: #00a86b; font-size: 16px; }
+    </style>
+@endpush
 
 @push('css-lib')
     <link rel="stylesheet" href="{{ asset('assets/admin/css/tom-select.bootstrap5.css') }}">
@@ -272,15 +290,41 @@
 
 @push('script')
     <script>
-        $(document).ready(function() {
-            $('#selectedValue option[value="selectItem"]').text('my name jubyer');
-            $('#selectedValue')[0].tomselect.updateOption('selectItem', {text: 'my name jubyer', value: 'selectItem'});
-        });
+
+        // ---- Profit preview: what the provider charges vs what you sell for, per 1,000 ----
+        const zkCur = @json($apiProvider->currency ?: basicControl()->base_currency);
+        const zkRate = {{ (float) ($apiProvider->conversion_rate ?: 1) }};
+        const zkFmt = n => {
+            const v = Math.round(n * 10000) / 10000;
+            let d = 4; while (d > 2 && Math.round(v * 10 ** (d - 1)) / 10 ** (d - 1) === v) d--;
+            return v.toLocaleString(undefined, {minimumFractionDigits: d, maximumFractionDigits: d});
+        };
+        function zkPreview(el, cost, pct, note) {
+            const sell = cost * (1 + pct / 100), profit = sell - cost;
+            el.innerHTML = `<div class="zk-pp-row"><span>@lang('Provider cost')</span><strong>${zkFmt(cost * zkRate)} ${zkCur}</strong></div>
+                <div class="zk-pp-row"><span>@lang('You sell at')</span><strong>${zkFmt(sell * zkRate)} ${zkCur}</strong></div>
+                <div class="zk-pp-row zk-pp-profit"><span>@lang('You earn')</span><strong>+${zkFmt(profit * zkRate)} ${zkCur}</strong></div>
+                <small class="text-muted">${note}</small>`;
+        }
+        let zkSingleCost = 0;
+        function zkSingleUpdate() {
+            const pct = parseFloat($('#importForm [name=price_percentage_increase]').val()) || 0;
+            zkPreview(document.getElementById('zkSinglePreview'), zkSingleCost, pct, @json(__('per 1000 sold at')) + ' ' + pct + '% ' + @json(__('profit')));
+        }
+        function zkBulkUpdate() {
+            const pct = parseFloat($('#importMultipleForm [name=price_percentage_increase]').val()) || 0;
+            zkPreview(document.getElementById('zkBulkPreview'), 1, pct, @json(__('Example: a service that costs 1.00 per 1000. Every imported service gets the same')) + ' ' + pct + '%.');
+        }
+        $(document).on('change', '#importForm [name=price_percentage_increase]', zkSingleUpdate);
+        $(document).on('change', '#importMultipleForm [name=price_percentage_increase]', zkBulkUpdate);
 
         $(document).on('click', '.import-single', function () {
             let route = $(this).data('route');
             $('#importForm').attr('action', route);
+            try { zkSingleCost = parseFloat(new URL(route, window.location.origin).searchParams.get('rate')) || 0; } catch (e) { zkSingleCost = 0; }
+            zkSingleUpdate();
         });
+        $(document).on('click', '.import-multiple', zkBulkUpdate);
 
         $(document).on('click', '.import-multiple', function () {
             let all_value = [];

@@ -35,8 +35,8 @@ class UpdateRefillStatus extends Command
     public function handle()
     {
         $orders = Order::with(['service.provider'])
-            ->whereNotIn('status', ['completed', 'refunded', 'canceled'])
-            ->whereNotIn('refill_status', ['completed', 'refunded', 'canceled'])
+            // Refills are requested on completed orders, so don't filter on the order status.
+            ->where(fn($q) => $q->whereNull('refill_status')->orWhereNotIn('refill_status', ['completed', 'refunded', 'canceled', 'rejected']))
             ->whereNotNull('refilled_at')
             ->whereNotNull('api_refill_id')
             ->whereHas('service', function ($query) {
@@ -54,7 +54,7 @@ class UpdateRefillStatus extends Command
             }
 
             try {
-                $response = Http::asForm()->post($provider->url, [
+                $response = Http::asForm()->timeout(30)->post($provider->url, [
                     'key' => $provider->api_key,
                     'action' => 'refill_status',
                     'refill' => $order->api_refill_id,

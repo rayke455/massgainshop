@@ -1,11 +1,11 @@
 <?php
 return [
     'user_dashboard_style_one' => [
-        'name' => 'User Dashboard Style One',
-        'preview_link' => 'assets/themes/light_green/img/light_green.png',
+        'name' => 'Zirka Dashboard (recommended)',
+        'preview_link' => 'assets/themes/light_green/img/zirka-dashboard-preview.jpg',
     ],
     'user_dashboard_style_two' => [
-        'name' => 'User Dashboard Style Two',
-        'preview_link' => 'assets/themes/dark_voilet/img/light_yellow.png',
+        'name' => 'Classic Dashboard',
+        'preview_link' => 'assets/themes/dark_voilet/img/zirka-classic-dashboard.jpg',
     ]
 ];

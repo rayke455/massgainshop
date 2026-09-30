@@ -4,7 +4,7 @@
     <div class="dashboard-wrapper">
         <div class="container">
             <div class="breadcrumb-area">
-                <h4 class="title">@lang("notice")</h4>
+                <h4 class="title">@lang("Updates")</h4>
                 <ul class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url('/') }}"><i class="fa-light fa-house"></i>
                             @lang("Home")</a>
@@ -12,7 +12,7 @@
                     <li class="breadcrumb-item"><a href="{{ route('user.dashboard') }}">
                             @lang("Dashboard")</a>
                     </li>
-                    <li class="breadcrumb-item active" aria-current="page">@lang("notice")</li>
+                    <li class="breadcrumb-item active" aria-current="page">@lang("Updates")</li>
                 </ul>
             </div>
             <div class="row">

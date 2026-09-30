@@ -671,7 +671,7 @@
 @push('script')
     <script>
         "use strict";
-        document.getElementById("copyBtn").addEventListener("click", () => {
+        document.getElementById("copyBtn")?.addEventListener("click", () => {
             let copyText = document.getElementById("api_key");
             copyText.select();
             copyText.setSelectionRange(0, 99999); // For mobile devices

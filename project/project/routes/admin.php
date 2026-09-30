@@ -260,6 +260,7 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
 
                 /* ===== ADMIN LANGUAGE SETTINGS ===== */
                 Route::get('languages', [LanguageController::class, 'index'])->name('language.index');
+                Route::post('languages/auto-translate', [LanguageController::class, 'toggleAutoTranslate'])->name('language.auto.translate');
                 Route::get('language/create', [LanguageController::class, 'create'])->name('language.create');
                 Route::post('language/store', [LanguageController::class, 'store'])->name('language.store');
                 Route::get('language/edit/{id}', [LanguageController::class, 'edit'])->name('language.edit');
@@ -300,6 +301,8 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
                 Route::post('sort-payment-methods', [PaymentMethodController::class, 'sortPaymentMethods'])->name('sort.payment.methods');
                 Route::post('payment-methods/deactivate', [PaymentMethodController::class, 'deactivate'])->name('payment.methods.deactivate');
                 Route::post('payment-methods/auto-update-currency/{id}', [PaymentMethodController::class, 'autoUpdateCurrency'])->name('payment.method.auto.update.currency');
+                Route::post('payment-methods/auto-update-currency-all', [PaymentMethodController::class, 'autoUpdateAllCurrencies'])->name('payment.method.auto.update.all');
+                Route::post('payment-methods/mpesa/test/{id}', [PaymentMethodController::class, 'testMpesa'])->name('payment.method.mpesa.test');
                 Route::post('payment-methods/add-child-panel/{id}', [PaymentMethodController::class, 'addChildPanel'])->name('payment.methods.add.child.panel');
 
 
@@ -430,11 +433,13 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
                 Route::put('payment/action/{id}', [PaymentLogController::class, 'action'])->name('payment.action');
 
 
-                Route::resource('referral-commission', ReferralCommissionController::class);
-                Route::resource('referral-commission/configure', ReferralCommissionController::class);
+                // Only index/store exist in the controller; full resources exposed pages that crashed.
+                Route::resource('referral-commission', ReferralCommissionController::class)->only(['index', 'store']);
                 Route::post('referral-commission/configure', [ReferralCommissionController::class, 'configure'])->name('referral.commission.configure');
 
                 /* ====== Manage API Provider =====*/
+                Route::post('system/check-provider-balances', [DashboardController::class, 'checkProviderBalances'])->name('system.check.balances');
+                Route::post('system/alert-email', [DashboardController::class, 'saveAlertEmail'])->name('system.alert.email');
                 Route::resource('api-provider', ApiProviderController::class);
                 Route::group(['prefix' => 'api-provider', 'as' => 'provider.'], function () {
                     Route::post('status/{id}', [ApiProviderController::class, 'providerStatus'])->name('status');
@@ -463,6 +468,8 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
                 Route::get('list-api-services/{id}', [ServiceController::class, 'listOfApiServices'])->name('list.api.services');
                 Route::post('api-services/import', [ServiceController::class, 'import'])->name('api.service.import');
                 Route::post('api-services/import/multiple', [ServiceController::class, 'importMultiple'])->name('api.service.import.multiple');
+                Route::post('api-services/quick/preview', [ServiceController::class, 'smartPreview'])->name('api.service.smart.preview');
+                Route::post('api-services/quick/import', [ServiceController::class, 'smartImport'])->name('api.service.smart.import');
                 Route::post('service/active-inactive-multiple', [ServiceController::class, 'activeInactiveMultiple'])->name('service.active.inactive.multiple');
                 Route::post('service/single-price-update/{id}', [ServiceController::class, 'singlePriceUpdate'])->name('service.single.price.update');
                 Route::post('service/multiple-price-update', [ServiceController::class, 'multiplePriceUpdate'])->name('service.multiple.price.update');
@@ -476,6 +483,11 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
                     Route::post('auto-update-currency', [CurrencyController::class, 'allAutoUpdateCurrency'])->name('all.auto.update');
                     Route::post('single/currency/auto-update', [CurrencyController::class, 'singleAutoUpdateCurrency'])->name('single.auto.update');
                     Route::post('currency/sort-by', [CurrencyController::class, 'sortBy'])->name('sort.by');
+                    Route::get('market-rates', [CurrencyController::class, 'marketRates'])->name('market.rates');
+                    Route::post('market-rates/apply', [CurrencyController::class, 'applyMarketRates'])->name('market.apply');
+                    Route::get('market-quote', [CurrencyController::class, 'marketQuote'])->name('market.quote');
+                    Route::post('auto-update/toggle', [CurrencyController::class, 'toggleAutoUpdate'])->name('auto.toggle');
+                    Route::post('add-all', [CurrencyController::class, 'addAll'])->name('add.all');
                 });
 
                 /*====== Manage Order =====*/

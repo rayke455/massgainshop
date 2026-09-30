@@ -42,7 +42,7 @@ class OrderController extends Controller
 
     public function show(Request $request, $status)
     {
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterUser = $request->filterUser;
         $filterOrderId = $request->filterOrderId;
         $filterService = $request->filterService;

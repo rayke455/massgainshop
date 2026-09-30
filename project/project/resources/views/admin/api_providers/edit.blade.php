@@ -108,6 +108,21 @@
                                         @enderror
                                     </div>
                                 </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label for="lowBalanceLabel" class="form-label">@lang('Low balance alert')</label>
+                                        <div class="input-group">
+                                            <input type="number" name="low_balance_alert" id="lowBalanceLabel" min="0" step="0.01"
+                                                   class="form-control @error('low_balance_alert') is-invalid @enderror"
+                                                   value="{{ old('low_balance_alert', $apiProvider->low_balance_alert ?? 5) }}">
+                                            <span class="input-group-text">{{ $apiProvider->currency ?: 'USD' }}</span>
+                                        </div>
+                                        <small class="text-muted">@lang('You get a warning on the dashboard (and by email) when your balance with this provider drops below this. 0 = never warn.')</small>
+                                        @error('low_balance_alert')
+                                        <span class="invalid-feedback d-block">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
                                 <div class="row mb-4 d-flex align-items-center">
                                     <div class="col-md-6">
                                         <label class="row form-check form-switch mt-3" for="apiProviderStatus">

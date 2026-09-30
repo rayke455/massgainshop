@@ -49,6 +49,10 @@ Route::get('maintenance-mode', function () {
 })->name('maintenance');
 
 
+// Safaricom payment callbacks: must work on whatever public address Safaricom was given (tunnel, www/non-www),
+// so this sits outside the single-domain CheckModuleIsEnable group. Payments are re-verified before crediting.
+Route::post('mpesa/webhook', [MpesaController::class, 'webhook'])->name('mpesa.webhook');
+
 Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModuleIsEnable']], function () use ($basicControl) {
 
     Route::get('language/{locale}', function ($locale) {
@@ -188,6 +192,9 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
 
     Route::post("set-currency-cookie", [FrontendController::class, 'setCurrency'])->name('set.currency');
 
+    Route::get('track-order', [\App\Http\Controllers\Frontend\OrderTrackController::class, 'track'])
+        ->middleware('throttle:15,1')->name('order.track');
+
     Route::get('auth/{socialite}', [SocialiteController::class, 'socialiteLogin'])->name('socialiteLogin');
     Route::get('auth/callback/{socialite}', [SocialiteController::class, 'socialiteCallback'])->name('socialiteCallback');
 
@@ -198,7 +205,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::get('kora-payment/verify', [KoraPayPaymentController::class, 'verifyPayment'])->name('kora.payment.verify');
 
     Route::post('mpesa/stkPush/{trx_id}', [MpesaController::class, 'stkPush'])->name('mpesa.stkPush');
-    Route::post('mpesa/webhook', [MpesaController::class, 'webhook'])->name('mpesa.webhook');
+    Route::get('mpesa/status/{trx_id}', [MpesaController::class, 'status'])->middleware('auth')->name('mpesa.status');
 
 
     Auth::routes();

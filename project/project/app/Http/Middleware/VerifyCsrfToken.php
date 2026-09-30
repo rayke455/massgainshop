@@ -14,6 +14,7 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         '*save-token*',
         '*sort-payment-methods*',
-        '*admin/upload/ck/image*'
+        '*admin/upload/ck/image*',
+        'mpesa/webhook', // Safaricom posts payment callbacks here (verified against their API before crediting)
     ];
 }

@@ -16,8 +16,32 @@
                     </nav>
                     <h1 class="page-header-title">@lang("Payment Gateway")</h1>
                 </div>
+                <div class="col-sm-auto">
+                    <form action="{{ route('admin.payment.method.auto.update.all') }}" method="post">
+                        @csrf
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi-graph-up-arrow me-1"></i> @lang("Update all gateway rates")
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
+
+        @php
+            // A non-base currency at rate 1 almost always means "never set": deposits would be credited 1:1.
+            $zkBase = strtoupper(basicControl()->base_currency);
+            $zkSuspicious = collect($paymentGateways)->where('status', 1)->flatMap(function ($g) use ($zkBase) {
+                return collect($g->receivable_currencies ?? [])
+                    ->filter(fn($c) => strtoupper((string) data_get($c, 'name')) !== $zkBase && (float) data_get($c, 'conversion_rate') == 1.0)
+                    ->map(fn($c) => $g->name . ' (' . data_get($c, 'name') . ')');
+            });
+        @endphp
+        @if($zkSuspicious->isNotEmpty())
+            <div class="alert alert-soft-danger mb-4" role="alert">
+                <strong>@lang("Check these rates"):</strong> {{ $zkSuspicious->join(', ') }}
+                — @lang("the rate is 1, so customers would get 1") {{ $zkBase }} @lang("of balance per 1 unit paid. Click \"Update all gateway rates\" to use live market rates.")
+            </div>
+        @endif
 
         <div class="row">
             <div class="col-lg-12">

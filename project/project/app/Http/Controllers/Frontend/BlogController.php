@@ -59,6 +59,7 @@ class BlogController extends Controller
     {
         try {
             $search = $request->all();
+            $data['footer'] = footerData(); // the page includes the footer section, which needs this
             $data['blogs'] = Blog::with('category', 'details', 'author')
                 ->when(isset($search['search']), function ($query) use ($search) {
                     $query->where(function ($query) use ($search) {

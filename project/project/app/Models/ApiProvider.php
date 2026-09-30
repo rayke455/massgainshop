@@ -16,7 +16,15 @@ class ApiProvider extends Model
         'balance',
         'currency',
         'conversion_rate',
-        'status'
+        'status',
+        'low_balance_alert',
+        'balance_checked_at',
+        'balance_alerted_at',
+    ];
+
+    protected $casts = [
+        'balance_checked_at' => 'datetime',
+        'balance_alerted_at' => 'datetime',
     ];
 
     public function services()

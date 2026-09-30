@@ -1,7 +1,7 @@
 @extends(template(). 'layouts.app')
 @section('title',trans('Services'))
 @section('content')
-    <section class="service-page-area" id="services">
+    <section class="service-page-area" id="services" translate="no">
         <div class="container">
 
             @php

@@ -1,61 +1,42 @@
 <!-- Blog Section start -->
-<section class="blog-section">
+<section class="zk-section">
     <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="section-header text-center mb-50">
-                    <span class="section-subtitle">@lang(@$blog['single']['title'])</span>
-                    <h3 class="section-title mx-auto">@lang(@$blog['single']['sub_title'])</h3>
-                    <p class="cmn-para-text mx-auto mt-20">@lang(@$blog['single']['short_description'])</p>
-                </div>
-            </div>
+        <div class="zk-head zk-reveal">
+            <span class="zk-eyebrow">@lang(@$blog['single']['title'])</span>
+            <h2 class="zk-title">{!! zkHighlight(__(@$blog['single']['sub_title'])) !!}</h2>
+            <p class="zk-lead">@lang(strip_tags(@$blog['single']['short_description']))</p>
         </div>
         <div class="row g-4">
             @forelse($blog['multiple'] as $key => $item)
-                <div class="col-lg-4 col-md-6">
-                    <div class="blog-box">
-                        <a href="{{ route('blog.details', optional($item->details)->slug) }}">
-                            <div class="img-box">
-                                <img src="{{ getFile($item->thumbnail_image_driver, $item->thumbnail_image) }}" alt="">
-                            </div>
+                @php
+                    $blogUrl = route('blog.details', optional($item->details)->slug);
+                    $authorDetails = optional(optional($item->author)->details);
+                @endphp
+                <div class="col-lg-4 col-md-6 zk-reveal">
+                    <article class="zk-card zk-post">
+                        <a href="{{ $blogUrl }}" class="zk-post__img" tabindex="-1" aria-hidden="true">
+                            <img src="{{ getFile($item->thumbnail_image_driver, $item->thumbnail_image) }}" alt=""
+                                 loading="lazy">
                         </a>
-                        <div class="content-box">
-                            <ul class="meta">
-                                <li class="cmn-box4">
-                                    <a href="{{ route('blog.author', optional(optional($item->author)->details)->slug) }}"><span
-                                            class="icon"><i class="fa-regular fa-user"></i></span>
-                                        <span>by {{ optional(optional($item->author)->details)->name }}</span></a>
-                                </li>
-                                <li class="item">
-                                    <span class="icon"><i class="fa-regular fa-eye"></i></span>
-                                    <span>{{ $item->views ?? 0 }} @lang("Views") </span>
-                                </li>
-                                <li class="item">
-                                    <span class="icon"><i class="fa-regular fa-calendar-days"></i></span>
-                                    <span>{{ dateTime($item->created_at) }}</span>
-                                </li>
-
-                            </ul>
-                            <h4 class="blog-title"><a
-                                    href="{{ route('blog.details', optional($item->details)->slug) }}">@lang(optional($item->details)->title)</a>
-                            </h4>
-                            <div class="para-text">
-                                <p>
-                                    @lang(strip_tags(optional($item->details)->description))
-                                </p>
+                        <div class="zk-post__body">
+                            <div class="zk-post__meta">
+                                @if($authorDetails->slug)
+                                    <a href="{{ route('blog.author', $authorDetails->slug) }}"><i
+                                            class="fa-regular fa-user"></i>{{ $authorDetails->name }}</a>
+                                @endif
+                                <span><i class="fa-regular fa-calendar"></i>{{ dateTime($item->created_at) }}</span>
+                                <span><i class="fa-regular fa-eye"></i>{{ $item->views ?? 0 }}</span>
                             </div>
-                            <a href="{{ route('blog.details', optional($item->details)->slug) }}"
-                               class="blog-btn">@lang("read more")<i
+                            <h4><a href="{{ $blogUrl }}">@lang(optional($item->details)->title)</a></h4>
+                            <p>@lang(strip_tags(optional($item->details)->description))</p>
+                            <a href="{{ $blogUrl }}" class="zk-post__more">@lang("Read more") <i
                                     class="fa-regular fa-arrow-right"></i></a>
                         </div>
-
-                    </div>
+                    </article>
                 </div>
             @empty
                 <div class="text-center p-4">
-                    <img class="error-image mb-3"
-                         src="{{ asset('assets/global/img/oc-error.svg') }}"
-                         alt="Image Description" data-hs-theme-appearance="default">
+                    <img class="error-image mb-3" src="{{ asset('assets/global/img/oc-error.svg') }}" alt="">
                     <p class="mb-0">@lang("No blogs available to display.")</p>
                 </div>
             @endforelse

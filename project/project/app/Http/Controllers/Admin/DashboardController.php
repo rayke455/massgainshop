@@ -31,6 +31,8 @@ class DashboardController extends Controller
         $statistics['schedule'] = $this->dayList();
         $data['monthlySchedule'] = $this->monthly();
 
+        $data['profit'] = $this->profitStats();
+
         $data['bestSales'] = Order::with('service')
             ->whereHas('service')
             ->selectRaw('service_id ,COUNT(service_id) as count, sum(quantity) as quantity')
@@ -38,6 +40,72 @@ class DashboardController extends Controller
 
         $data['categories'] = Category::where('status', 1)->get();
         return view('admin.dashboard-alternative', $data, compact("statistics", 'type'));
+    }
+
+    /**
+     * Revenue, provider cost and profit from orders (main panel only; canceled/refunded excluded).
+     * Orders placed before cost tracking existed are estimated from the service's current provider price.
+     */
+    /** "Check balances now" button on the dashboard health card. */
+    public function checkProviderBalances()
+    {
+        @set_time_limit(120);
+        \Illuminate\Support\Facades\Artisan::call('app:check-provider-balance');
+        return back()->with('success', 'Provider balances refreshed.');
+    }
+
+    /** Where low-balance alerts are emailed. */
+    public function saveAlertEmail(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['alert_email' => 'nullable|email|max:191']);
+        $basic = \App\Models\BasicControl::firstOrCreate();
+        $basic->alert_email = $request->input('alert_email');
+        $basic->save();
+        \Cache::forget('ConfigureSetting');
+        return back()->with('success', $basic->alert_email ? 'Alerts will be emailed to ' . $basic->alert_email . '.' : 'Alert emails turned off.');
+    }
+
+    protected function profitStats(): array
+    {
+        $qtyTypes = "'" . implode("','", \App\Models\Order::QUANTITY_BASED_TYPES) . "'";
+        $costExpr = "COALESCE(o.provider_cost, CASE WHEN COALESCE(s.service_type, 'Default') IN ($qtyTypes)
+                        THEN o.quantity * CAST(NULLIF(s.original_price, '') AS DECIMAL(18,8)) / 1000
+                        ELSE CAST(NULLIF(s.original_price, '') AS DECIMAL(18,8)) END, 0)";
+
+        $range = function ($from = null) use ($costExpr) {
+            $row = \DB::table('orders as o')
+                ->leftJoin('services as s', 's.id', '=', 'o.service_id')
+                ->whereNull('o.child_panel_id')
+                ->whereNotIn('o.status', ['canceled', 'refunded'])
+                ->when($from, fn($q) => $q->where('o.created_at', '>=', $from))
+                ->selectRaw("COUNT(*) as orders, COALESCE(SUM(o.price),0) as revenue, COALESCE(SUM($costExpr),0) as cost,
+                             SUM(CASE WHEN o.provider_cost IS NULL THEN 1 ELSE 0 END) as estimated")
+                ->first();
+            return [
+                'orders' => (int)$row->orders,
+                'revenue' => (float)$row->revenue,
+                'cost' => (float)$row->cost,
+                'profit' => (float)$row->revenue - (float)$row->cost,
+                'margin' => $row->revenue > 0 ? ((float)$row->revenue - (float)$row->cost) / (float)$row->revenue * 100 : null,
+                'estimated' => (int)$row->estimated,
+            ];
+        };
+
+        $topServices = \DB::table('orders as o')
+            ->join('services as s', 's.id', '=', 'o.service_id')
+            ->whereNull('o.child_panel_id')
+            ->whereNotIn('o.status', ['canceled', 'refunded'])
+            ->where('o.created_at', '>=', now()->startOfMonth())
+            ->groupBy('s.id', 's.service_title')
+            ->selectRaw("s.service_title, COUNT(*) as orders, SUM(o.price) - SUM($costExpr) as profit")
+            ->orderByDesc('profit')->limit(5)->get();
+
+        return [
+            'today' => $range(now()->startOfDay()),
+            'month' => $range(now()->startOfMonth()),
+            'all' => $range(),
+            'top' => $topServices,
+        ];
     }
 
     public function monthlyDepositWithdraw(Request $request)

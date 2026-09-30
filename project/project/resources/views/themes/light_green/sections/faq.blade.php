@@ -1,49 +1,38 @@
 <!-- Faq section start -->
-<section class="faq-section">
+<section class="zk-section" id="faq">
     <div class="container">
-        <div class="row gy-4 gy-md-5 gx-sm-5 align-items-center">
-            <div class="col-md-6">
-                <div class="left-side">
-                    <span class="section-subtitle">@lang(@$faq['single']['title'])</span>
-                    <h2 class="section-title">
-                        @lang(@$faq['single']['heading'])
-                    </h2>
-                    <p class="cmn-para-text mx-auto mt-20">@lang(strip_tags(@$faq['single']['description']))</p>
-                    <div class="btn-area mt-30">
-                        <a href="{{ @$faq['single']['media']->button_link }}"
-                           class="cmn-btn">@lang(@$faq['single']['button_name'])</a>
+        <div class="row g-4 g-lg-5">
+            <div class="col-lg-5">
+                <div class="zk-faq__intro zk-reveal">
+                    <span class="zk-eyebrow">@lang(@$faq['single']['title'] ?: 'FAQ')</span>
+                    <h2 class="zk-title">{!! zkHighlight(__(@$faq['single']['heading'] ?: 'Questions? We have [answers]')) !!}</h2>
+                    <p class="zk-lead">@lang(strip_tags(@$faq['single']['description']))</p>
+                    <div class="zk-faq__help">
+                        <span class="zk-icon"><i class="fa-regular fa-headset"></i></span>
+                        <div>
+                            <strong>@lang('Still stuck?')</strong>
+                            <span>@lang('Our team replies fast, usually within minutes.')</span>
+                        </div>
+                        <a href="{{ @$faq['single']['media']->button_link ?: route('page', 'contact') }}" class="zk-btn zk-btn--primary zk-btn--sm">
+                            @lang(@$faq['single']['button_name'] ?: 'Contact us')
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="faq-content">
-                    <div class="accordion" id="faqAccordion">
-                        @forelse($faq['multiple'] as $key => $item)
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading{{$key}}">
-                                    <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }}" type="button"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#collapse{{$key}}" aria-expanded="true"
-                                            aria-controls="collapse{{$key}}">
-                                        @lang(@$item['question'])
-                                    </button>
-                                </h2>
-                                <div id="collapse{{$key}}"
-                                     class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}"
-                                     aria-labelledby="heading{{$key}}"
-                                     data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body">
-                                        <div class="table-responsive">
-                                            <p>
-                                                @lang(strip_tags(@$item['answer']))
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+            <div class="col-lg-7">
+                <div class="zk-faq zk-reveal" id="zkFaq">
+                    @forelse($faq['multiple'] as $key => $item)
+                        <details class="zk-faq__item" @if($loop->first) open @endif>
+                            <summary>
+                                <span>@lang(@$item['question'])</span>
+                                <i class="fa-regular fa-plus" aria-hidden="true"></i>
+                            </summary>
+                            <div class="zk-faq__answer">
+                                <p>@lang(strip_tags(@$item['answer']))</p>
                             </div>
-                        @empty
-                        @endforelse
-                    </div>
+                        </details>
+                    @empty
+                    @endforelse
                 </div>
             </div>
         </div>

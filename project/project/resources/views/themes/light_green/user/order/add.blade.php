@@ -1,5 +1,5 @@
 @extends(template().'layouts.user')
-@section('title',trans('New Order'))
+@section('title',trans('Buy services'))
 @section('content')
 
     @push('style')
@@ -53,39 +53,40 @@
         </style>
     @endpush
 
-    <div class="dashboard-wrapper" id="new_order">
+    <div class="dashboard-wrapper" id="new_order" translate="no">
         <div class="container">
-            <div class="breadcrumb-area">
-                <h4 class="title">@lang("New Order")</h4>
-                <ul class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url('/') }}"><i
-                                class="fa-light fa-house"></i>
-                            @lang("Home")</a>
-                    </li>
-                    <li class="breadcrumb-item"><a href="{{ route('user.dashboard') }}">
-                            @lang("Dashboard")</a>
-                    </li>
-                    <li class="breadcrumb-item" aria-current="page">@lang("Order")</li>
-                    <li class="breadcrumb-item active" aria-current="page">@lang("New Order")</li>
-                </ul>
+            @php
+                $zkCurrency = auth()->user()->currency ?: basicControl()->base_currency;
+                $zkRate = optional(\App\Models\Currency::where('code', auth()->user()->currency)->first())->conversion_rate ?? 1;
+            @endphp
+            <div class="zk-welcome">
+                <div>
+                    <h1 class="zk-welcome__title">@lang('Buy services')</h1>
+                    <p class="zk-welcome__sub">@lang('Choose a platform, pick a service, paste your link.')</p>
+                </div>
             </div>
             <div class="row">
                 <div class="col-12">
                     <div class="card mb-30">
                         <div class="card-header">
-                            <h4>@lang("choose a social network")</h4>
+                            <h4><span class="zk-step-no">1</span>@lang("Choose a platform")</h4>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
                                 @forelse($socialMedia as $media)
-                                    <div class="col-lg-3 col-md-4 col-sm-6">
+                                    <div class="col-xl-2 col-lg-3 col-md-4 col-6">
                                         <button type="button" class="social-btn w-100"
                                                 :class="{ activeSocialMedia: '{{ $media->id }}' == isActive }"
                                                 @click="toggleActive('{{ $media->id   }}')"
                                                 @click.prevent="getCategoryAndService('{{ $media->id   }}')">
-                                            <img class="social-media-img"
-                                                 src="{{ getFile($media->icon_driver, $media->icon) }}"
-                                                 alt="{{ $media->name }}">
+                                            @php $zkB = zkBrand($media->name); @endphp
+                                            @if($media->icon)
+                                                <img class="social-media-img" src="{{ getFile($media->icon_driver, $media->icon) }}" alt="">
+                                            @elseif($zkB)
+                                                <i class="fa-brands fa-{{ $zkB[0] }} zk-brand-ico" style="--c: {{ $zkB[1] }}"></i>
+                                            @else
+                                                <i class="fa-regular fa-hashtag zk-brand-ico"></i>
+                                            @endif
                                             {{ $media->name }}
                                         </button>
                                     </div>
@@ -97,8 +98,11 @@
                 </div>
             </div>
             <div class="row g-4 pulse-loader">
-                <div class="col-md-6">
+                <div class="col-lg-7">
                     <div class="card">
+                        <div class="card-header">
+                            <h4><span class="zk-step-no">2</span>@lang("Order details")</h4>
+                        </div>
                         <div class="card-body">
                             <form @submit.prevent="placeOrder">
                                 <div class="row g-3">
@@ -129,17 +133,26 @@
                                     <div class="col-12">
                                         <label for="link" class="form-label">@lang("link")</label>
                                         <input type="text" class="form-control" id="link" v-model="link"
-                                               placeholder="@lang("www.example.com/your_profile_identity")"
+                                               placeholder="@lang("https://instagram.com/yourprofile")" inputmode="url"
                                                autocomplete="off">
                                         <span class="text-danger link error-link"></span>
+                                        <div class="zk-linkstatus" id="zkLinkStatus" aria-live="polite"></div>
+                                        <div class="zk-linkhelp" id="zkLinkHelp">
+                                            <button type="button" class="zk-linkhelp__toggle" aria-expanded="false" aria-controls="zkLinkGuide">
+                                                <i class="fa-regular fa-circle-question"></i> <span>@lang('How do I copy my link?')</span>
+                                                <i class="fa-regular fa-chevron-down zk-linkhelp__chev"></i>
+                                            </button>
+                                            <div class="zk-linkhelp__guide" id="zkLinkGuide" hidden></div>
+                                        </div>
                                     </div>
 
                                     <div class="col-12" v-if="hasQuantity">
                                         <label for="quantity" class="form-label">@lang("Quantity")</label>
                                         <input type="number" class="form-control" v-model.number="quantity"
                                                id="quantity" :readonly="hasCustomComments"
-                                               value="0">
-                                        <span class="text-danger quantity"></span>
+                                               value="0" inputmode="numeric">
+                                        <small class="zk-hint" v-if="minAmount">@lang("Min") @{{ minAmount }} · @lang("Max") @{{ maxAmount }}</small>
+                                        <span class="text-danger quantity d-block"></span>
                                     </div>
                                     <div class="col-12 drip_feed" :class="display">
                                         <label class="form-label">@lang('Drip-Feed')</label>
@@ -182,19 +195,10 @@
                                         </div>
                                     </div>
                                     <div class="col-12">
-                                        <label for="price" class="form-label">@lang("price")</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control"
-                                                   :value="hasQuantity ? totalPrice : withoutQuantityTotalPrice"
-                                                   id="price"
-                                                   disabled>
-                                            <div class="input-group-text">
-                                                @if(auth()->user()->currency)
-                                                    {{ auth()->user()->currency }}
-                                                @else
-                                                    {{ basicControl()->base_currency }}
-                                                @endif
-                                            </div>
+                                        <div class="zk-total" :class="{ 'zk-total--over': (hasQuantity ? totalPrice : withoutQuantityTotalPrice) > {{ (float) auth()->user()->balance * $zkRate }} }">
+                                            <span class="zk-total__label">@lang("Total charge")</span>
+                                            <strong class="zk-total__value" id="price">@{{ Number(hasQuantity ? totalPrice : withoutQuantityTotalPrice || 0).toFixed(2) }} {{ $zkCurrency }}</strong>
+                                            <a class="zk-total__warn" href="{{ route('user.add.fund') }}">@lang("Not enough balance — add funds") <i class="fa-regular fa-arrow-right"></i></a>
                                         </div>
                                     </div>
 
@@ -497,73 +501,46 @@
                                                    id="Yes, i have confirmed the order!">
                                             <label class="form-check-label"
                                                    for="Yes, i have confirmed the order!">
-                                                @lang("Yes, i have confirmed the order!")
+                                                @lang("I've checked the link is correct and the account is public")
                                             </label>
                                         </div>
                                         <span class="text-danger check"></span>
                                     </div>
-                                    <button type="submit" class="cmn-btn mt-30">@lang("place order")</button>
+                                    <button type="submit" class="zk-btn zk-btn--primary w-100 mt-2 zk-btn--lg">@lang("Place order")</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
+                <div class="col-lg-5">
+                    <div class="card zk-sticky">
                         <div class="card-header">
-                            <h4>@lang("service description")</h4>
+                            <h4>@lang("Service details")</h4>
                         </div>
                         <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label for="Service-name" class="form-label">@lang("Service name")</label>
-                                    <input type="text" class="form-control" id="Service-name"
-                                           :value="serviceName" disabled>
-                                </div>
-                                <div class="col-12">
-                                    <div class="row g-3">
-                                        <div class="col-lg-6 col-md-6">
-                                            <label for="Minimum"
-                                                   class="form-label">@lang("Minimum")</label>
-                                            <input type="text" class="form-control" v-model.number="minAmount"
-                                                   id="Minimum" disabled>
-                                        </div>
-                                        <div class="col-lg-6 col-md-6">
-                                            <label for="Maximum Amount"
-                                                   class="form-label">@lang("Maximum")</label>
-                                            <input type="text" class="form-control" v-model.number="maxAmount"
-                                                   id="Maximum" disabled>
-                                        </div>
-                                        <div class="col-lg-6 col-md-6">
-                                            <label for="Price per 1k" class="form-label">@lang("Price per") <span
-                                                    v-if="hasQuantity">1k</span></label>
-                                            <div class="input-group">
-                                                <input type="text" v-model.number="pricePer" class="form-control"
-                                                       disabled>
-                                                <div class="input-group-text">
-                                                    @if(auth()->user()->currency)
-                                                        {{ auth()->user()->currency }}
-                                                    @else
-                                                        {{ basicControl()->base_currency }}
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-
-
-                                        <div class="col-lg-6 col-md-6">
-                                            <label for="AvgTime"
-                                                   class="form-label">@lang("Avg Time")</label>
-                                            <input type="text" class="form-control" v-model="avgTime"
-                                                   id="Avg Time" disabled>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 mb-2">
-                                    <label for="Description" class="form-label">@lang("Description")</label>
-                                    <textarea class="form-control" id="Description" rows="12" disabled>@{{ description }}</textarea>
-                                </div>
+                            <p class="zk-sd__name" v-if="serviceName">@{{ serviceName }}</p>
+                            <p class="zk-sd__name text-muted" v-else>@lang('Choose a service to see its details.')</p>
+                            <dl class="zk-sd">
+                                <div><dt>@lang('Price')</dt><dd>@{{ pricePer || '—' }} {{ auth()->user()->currency ?: basicControl()->base_currency }} <small v-if="hasQuantity">@lang('per 1000')</small></dd></div>
+                                <div><dt>@lang('Order size')</dt><dd>@{{ minAmount || '—' }} – @{{ maxAmount || '—' }}</dd></div>
+                                <div><dt>@lang('Average time')</dt><dd>@{{ avgTime && avgTime !== 'N/A' ? avgTime : @json(__('Usually starts within minutes')) }}</dd></div>
+                            </dl>
+                            <div class="zk-sd__desc" v-if="description">
+                                <span class="zk-sd__label">@lang('About this service')</span>
+                                <p>@{{ description }}</p>
                             </div>
+                        </div>
+                    </div>
+                    <div class="card mt-4 zk-tips">
+                        <div class="card-header"><h4>@lang('Before you order')</h4></div>
+                        <div class="card-body">
+                            <ul>
+                                <li><i class="fa-regular fa-lock-open"></i><span><strong>@lang('Keep the account public')</strong> @lang('until the order is complete, or it can\'t be delivered.')</span></li>
+                                <li><i class="fa-regular fa-link"></i><span><strong>@lang('Profile or post?')</strong> @lang('Followers and subscribers use your profile link. Likes, views and comments use the link of that one post.')</span></li>
+                                <li><i class="fa-regular fa-hourglass-half"></i><span><strong>@lang('One order per link at a time.')</strong> @lang('Wait for it to finish before ordering the same service for the same link again.')</span></li>
+                                <li><i class="fa-regular fa-pen-slash"></i><span><strong>@lang('Don\'t change your username')</strong> @lang('while an order is running.')</span></li>
+                                <li><i class="fa-regular fa-headset"></i><span>@lang('Stuck?') <a href="{{ route('user.ticket.create') }}">@lang('Open a support ticket')</a> @lang('and we\'ll help.')</span></li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -576,5 +553,19 @@
     <script src="{{ asset('assets/global/js/vue.global.prod.min.js') }}"></script>
 @endpush
 
+@push('script')
+    <script>
+        // Used by the order form to check the balance before submitting (amounts in the customer's display currency).
+        window.zkOrderCtx = {
+            balance: {{ (float) auth()->user()->balance * (optional(\App\Models\Currency::where('code', auth()->user()->currency)->first())->conversion_rate ?? 1) }},
+            rate: {{ optional(\App\Models\Currency::where('code', auth()->user()->currency)->first())->conversion_rate ?? 1 }},
+            currency: @json(auth()->user()->currency ?: basicControl()->base_currency),
+            baseCurrency: @json(basicControl()->base_currency),
+            addFundsUrl: @json(route('user.add.fund')),
+        };
+    </script>
+@endpush
+
 @include(template().'user.order.components.create_order_scripts')
+@include(template().'user.order.components.link_helper')
 

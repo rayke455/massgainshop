@@ -18,7 +18,7 @@
 
             <div class="card mt-50">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
-                    <h4 class="mb-0">@lang("Transaction History")</h4>
+                    <h4 class="mb-0 d-none d-md-block">@lang("Transaction History")</h4>
                     <div class="btn-area">
                         <button type="button" class="cmn-btn rounded-1" data-bs-toggle="offcanvas"
                                 data-bs-target="#transactionFilter" aria-controls="transactionFilter">@lang("Filter")<i
@@ -49,9 +49,9 @@
                                                 class="text-{{ $transaction->trx_type == "+" ? 'success'  : 'danger' }}">
                                                 {{ $transaction->trx_type }}
                                                 @if(auth()->user()->currency)
-                                                    {{ currencyPositionBySelectedCurrency($transaction->amount * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}
+                                                    <span class="notranslate">{{ currencyPositionBySelectedCurrency($transaction->amount * ($currency ? $currency->conversion_rate : 1), auth()->user()->currency) }}</span>
                                                 @else
-                                                    {{ currencyPosition($transaction->amount) }}
+                                                    <span class="notranslate">{{ currencyPosition($transaction->amount) }}</span>
                                                 @endif
                                             </span>
                                         </td>

@@ -40,10 +40,8 @@ class Payment
                     "goodsDetail" => "Payment to " . config('basic.site_title')
                 ),
             ),
-            //'returnUrl' => route('ipn', [$gateway->code, $merchantTradeNo]),
-            //'webhookUrl' => route('ipn', [$gateway->code, $merchantTradeNo]),
-            'returnUrl' => "https://bugfinder.net/",
-            'webhookUrl' => "https://bugfinder.net/",
+            'returnUrl' => route('ipn', [$gateway->code, $merchantTradeNo]),
+            'webhookUrl' => route('ipn', [$gateway->code, $merchantTradeNo]),
             'cancelUrl' => route('failed'),
             'supportPayCurrency' => $deposit->payment_method_currency
         );

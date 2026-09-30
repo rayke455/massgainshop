@@ -9,7 +9,7 @@
                     <div class="footer-widget">
                         <div class="widget-logo mb-30">
                             <a href="{{ url('/') }}"><img class="logo"
-                                                          src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
+                                                          src="{{ getFile(basicControl()->admin_dark_mode_logo_driver, basicControl()->admin_dark_mode_logo) }}"
                                                           alt="Logo"></a>
                         </div>
                         <p>

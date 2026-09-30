@@ -19,7 +19,7 @@ class TransactionLogController extends Controller
 
     public function transactionSearch(Request $request)
     {
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterTransactionId = $request->filterTransactionID;
         $filterDate = explode('-', $request->filterDate);
         $startDate = $filterDate[0];

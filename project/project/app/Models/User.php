@@ -91,6 +91,23 @@ class User extends Authenticatable
         return $this->hasOne(Transaction::class)->latest();
     }
 
+    /**
+     * The customer's display currency, only if the admin still offers it (added + enabled).
+     * Otherwise null, so everything falls back to the base currency instead of showing
+     * base-currency amounts labelled with a currency that has no rate (e.g. "22.50 KES").
+     */
+    public function getCurrencyAttribute($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        static $active = null;
+        $active ??= Currency::where('status', 1)->pluck('code')->map(fn($c) => strtoupper($c))->all();
+
+        return in_array(strtoupper($value), $active, true) ? $value : null;
+    }
+
     public function getLastSeenActivityAttribute(): bool
     {
         if (Cache::has('user-is-online-' . $this->id) == true) {

@@ -419,7 +419,7 @@
     </script>
 @endpush
 
-@if($firebaseNotify)
+@if(!empty($firebaseNotify['apiKey']))
     @push('script')
 
         <script type="module">

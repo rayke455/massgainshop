@@ -157,7 +157,7 @@ class KycController extends Controller
     {
         $filterVerificationType = $request->filterVerificationType;
         $filterStatus = $request->filterStatus;
-        $search = $request->search['value'];
+        $search = data_get($request->search, 'value'); // null-safe when the table sends no search box
         $filterDate = explode('-', $request->filterDate);
         $startDate = $filterDate[0];
         $endDate = isset($filterDate[1]) ? trim($filterDate[1]) : null;
