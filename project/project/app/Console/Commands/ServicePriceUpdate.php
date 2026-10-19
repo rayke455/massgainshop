@@ -57,6 +57,13 @@ class ServicePriceUpdate extends Command
                     }
 
                     $remote = $responseData[(string)$service->api_service_id] ?? null;
+
+                    // Loss protection: the provider no longer sells this service → stop selling it too.
+                    if (!$remote && $responseData->isNotEmpty()) {
+                        $this->protect($service, 'removed by the provider');
+                        continue;
+                    }
+
                     $apiRate = $remote['price'] ?? $remote['rate'] ?? $service->api_provider_price;
 
                     $conversionRate = $provider->conversion_rate ?: 1;
@@ -79,11 +86,28 @@ class ServicePriceUpdate extends Command
                 if (!empty($updates)) {
                     foreach ($updates as $update) {
                         Service::where('id', $update['id'])->update($update);
+                        // Loss protection: never keep selling at or below cost.
+                        if ((float) $update['price'] <= (float) $update['original_price']) {
+                            $this->protect(Service::find($update['id']), 'selling price is not above the provider cost');
+                        }
                     }
                 }
             }
         } catch (\Exception $exception) {
 
         }
+    }
+
+    /** Switch a service off (if loss protection is on) and remember it for the daily report / dashboard. */
+    private function protect($service, string $reason): void
+    {
+        if (!$service || !$service->service_status || !\App\Services\Growth::get('loss.auto_disable', true)) {
+            return;
+        }
+        $service->update(['service_status' => 0]);
+        $events = \Illuminate\Support\Facades\Cache::get('zk_loss_events', []);
+        $events[] = ['id' => $service->id, 'title' => \Illuminate\Support\Str::limit($service->service_title, 80), 'reason' => $reason, 'at' => now()->toDateTimeString()];
+        \Illuminate\Support\Facades\Cache::put('zk_loss_events', array_slice($events, -50), now()->addDays(7));
+        Log::warning('Loss protection switched a service off', ['service' => $service->id, 'reason' => $reason]);
     }
 }

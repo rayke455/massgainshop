@@ -68,16 +68,17 @@
                                     </div>
                                     @foreach($smsMethodParameters as $key => $parameter)
                                         <div class="col-sm-6 mb-3">
-                                            <label for="{{$key}}"
+                                            <label for="{{ $key }}_field"
                                                    class="form-label">@lang(stringToTitle($key))</label>
                                             <div class="input-group input-group-merge"
                                                  data-hs-validation-validate-class>
+                                                {{-- The show/hide toggle only applies to secret fields (they have the eye button). --}}
                                                 <input type="{{ $parameter['is_protected'] ? 'password' : 'text' }}"
-                                                       class="js-toggle-password form-control @error($key) is-invalid @enderror"
-                                                       name="{{ $key }}" id="method_name"
+                                                       class="{{ $parameter['is_protected'] ? 'js-toggle-password' : '' }} form-control @error($key) is-invalid @enderror"
+                                                       name="{{ $key }}" id="{{ $key }}_field"
                                                        placeholder="@lang(snake2Title($key))"
                                                        value="{{ old($key ,$parameter['value']) }}" autocomplete="off"
-                                                       data-hs-toggle-password-options='{ "target": "#{{$key.'id'}}", "defaultClass": "bi-eye-slash", "showClass":"bi-eye", "classChangeTarget": "#{{$key}}" }'/>
+                                                       @if($parameter['is_protected']) data-hs-toggle-password-options='{ "target": "#{{$key.'id'}}", "defaultClass": "bi-eye-slash", "showClass":"bi-eye", "classChangeTarget": "#{{$key}}" }' @endif/>
                                                 @if($parameter['is_protected'])
                                                     <button type="button" id="{{$key.'id'}}"
                                                             class="input-group-append input-group-text">

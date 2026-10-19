@@ -1,4 +1,5 @@
 {{-- Client sidebar: static on desktop, slide-out drawer below 992px (Bootstrap offcanvas-lg). --}}
+@php $zkPanel = \App\Services\PanelRentals::current(); /* customer of a rented panel: platform-only items are hidden */ @endphp
 <aside class="offcanvas-lg offcanvas-start zk-side" tabindex="-1" id="zkSidebar" aria-label="@lang('Main menu')">
     <div class="zk-side__head">
         <a class="zk-side__logo" href="{{ route('user.dashboard') }}">
@@ -19,9 +20,11 @@
             </a>
 
             <p class="zk-side__label">@lang('Orders')</p>
+            @unless($zkPanel)
             <a class="zk-side__link {{ menuActive(['user.mass.order', 'user.show.draft.order']) }}" href="{{ route('user.mass.order') }}">
                 <i class="fa-regular fa-layer-group"></i><span>@lang('Mass order')</span>
             </a>
+            @endunless
             <a class="zk-side__link {{ menuActive('user.order.index') }}" href="{{ route('user.order.index') }}">
                 <i class="fa-regular fa-list-check"></i><span>@lang('My orders')</span>
             </a>
@@ -31,7 +34,7 @@
             <a class="zk-side__link {{ menuActive('user.show.drip.feed') }}" href="{{ route('user.show.drip.feed') }}">
                 <i class="fa-regular fa-droplet"></i><span>@lang('Drip-feed')</span>
             </a>
-            <a class="zk-side__link" href="{{ route('services') }}">
+            <a class="zk-side__link" href="{{ $zkPanel ? url('/') : route('services') }}">
                 <i class="fa-regular fa-tags"></i><span>@lang('Services & prices')</span>
             </a>
 
@@ -47,9 +50,19 @@
             </a>
 
             <p class="zk-side__label">@lang('Account')</p>
+            @unless($zkPanel)
+            <a class="zk-side__link" href="{{ route('user.panels.index') }}"><i class="fa-regular fa-store"></i><span>@lang('Rent a panel')</span></a>
+            @endunless
+            @if($zkPanel)
+                @if($zkPanel->whatsapp)
+                    <a class="zk-side__link" href="https://wa.me/{{ $zkPanel->whatsapp }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i><span>@lang('Support (WhatsApp)')</span></a>
+                @endif
+            @else
             <a class="zk-side__link {{ menuActive(['user.ticket.list', 'user.ticket.create', 'user.ticket.view']) }}" href="{{ route('user.ticket.list') }}">
                 <i class="fa-regular fa-headset"></i><span>@lang('Support')</span>
             </a>
+            @endif
+            @unless($zkPanel)
             <a class="zk-side__link {{ menuActive(['user.referral', 'user.referral.bonus']) }}" href="{{ route('user.referral') }}">
                 <i class="fa-regular fa-user-group"></i><span>@lang('Affiliates')</span>
             </a>
@@ -59,6 +72,7 @@
             <a class="zk-side__link {{ menuActive('user.notice') }}" href="{{ route('user.notice') }}">
                 <i class="fa-regular fa-bullhorn"></i><span>@lang('Updates')</span>
             </a>
+            @endunless
             <a class="zk-side__link {{ menuActive(['user.profile', 'user.password.setting', 'user.two.step.security', 'user.kyc.verification', 'user.notification.settings']) }}" href="{{ route('user.profile') }}">
                 <i class="fa-regular fa-gear"></i><span>@lang('Settings')</span>
             </a>

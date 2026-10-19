@@ -54,6 +54,14 @@
     @endpush
 
     <div class="dashboard-wrapper" id="new_order" translate="no">
+        @if(isset($favorites) && $favorites->isNotEmpty())
+            <div class="zk-favs" aria-label="@lang('Your favourites')">
+                <span class="zk-favs__label"><i class="fa-solid fa-star"></i> @lang('Favourites')</span>
+                @foreach($favorites as $f)
+                    <a class="zk-favs__chip" href="{{ route('user.order.create', ['serviceId' => $f->id]) }}" title="{{ $f->service_title }}">{{ \Illuminate\Support\Str::limit($f->service_title, 40) }}</a>
+                @endforeach
+            </div>
+        @endif
         <div class="container">
             @php
                 $zkCurrency = auth()->user()->currency ?: basicControl()->base_currency;
@@ -111,7 +119,7 @@
                                         <select class="cmn-select3" name="categories" v-model="selectedCategory"
                                                 @change="handleCategoryChange()">
                                             <option value="" disabled selected>@lang("Select Category")</option>
-                                            <option v-for="category in categories" :key="category.id"
+                                            <option v-cloak v-for="category in categories" :key="category.id"
                                                     :value="category.id">
                                                 @{{ category.category_title }}
                                             </option>
@@ -123,7 +131,7 @@
                                         <select class="cmn-select4" name="service" v-model="selectedService"
                                                 @change="handleServiceChange()">
                                             <option value="" disabled selected>@lang("Select Service")</option>
-                                            <option v-for="service in services" :key="service.id" :value="service.id"
+                                            <option v-cloak v-for="service in services" :key="service.id" :value="service.id"
                                                     :value="service.id">
                                                 @{{ service.service_title }}
                                             </option>
@@ -151,7 +159,7 @@
                                         <input type="number" class="form-control" v-model.number="quantity"
                                                id="quantity" :readonly="hasCustomComments"
                                                value="0" inputmode="numeric">
-                                        <small class="zk-hint" v-if="minAmount">@lang("Min") @{{ minAmount }} · @lang("Max") @{{ maxAmount }}</small>
+                                        <small class="zk-hint" v-if="minAmount" v-cloak>@lang("Min") @{{ minAmount }} · @lang("Max") @{{ maxAmount }}</small>
                                         <span class="text-danger quantity d-block"></span>
                                     </div>
                                     <div class="col-12 drip_feed" :class="display">
@@ -197,8 +205,12 @@
                                     <div class="col-12">
                                         <div class="zk-total" :class="{ 'zk-total--over': (hasQuantity ? totalPrice : withoutQuantityTotalPrice) > {{ (float) auth()->user()->balance * $zkRate }} }">
                                             <span class="zk-total__label">@lang("Total charge")</span>
-                                            <strong class="zk-total__value" id="price">@{{ Number(hasQuantity ? totalPrice : withoutQuantityTotalPrice || 0).toFixed(2) }} {{ $zkCurrency }}</strong>
+                                            <strong class="zk-total__value" id="price" v-cloak>@{{ Number(hasQuantity ? totalPrice : withoutQuantityTotalPrice || 0).toFixed(2) }} {{ $zkCurrency }}</strong>
                                             <a class="zk-total__warn" href="{{ route('user.add.fund') }}">@lang("Not enough balance — add funds") <i class="fa-regular fa-arrow-right"></i></a>
+                                            @php $zkVipNow = \App\Services\Growth::vip(auth()->user())['level']; @endphp
+                                            @if($zkVipNow && $zkVipNow->discount_percent > 0)
+                                                <small class="zk-total__vip"><i class="fa-solid fa-crown"></i> {{ $zkVipNow->name }}: {{ rtrim(rtrim(number_format($zkVipNow->discount_percent, 2), '0'), '.') }}% @lang('discount already included')</small>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -518,16 +530,19 @@
                             <h4>@lang("Service details")</h4>
                         </div>
                         <div class="card-body">
-                            <p class="zk-sd__name" v-if="serviceName">@{{ serviceName }}</p>
+                            <p class="zk-sd__name" v-if="serviceName" v-cloak>@{{ serviceName }}</p>
+                            <button type="button" class="zk-fav-btn" v-if="selectedService && selectedService != '0'" :data-service="selectedService" v-cloak>
+                                <i class="fa-regular fa-star"></i> @lang('Save to favourites')
+                            </button>
                             <p class="zk-sd__name text-muted" v-else>@lang('Choose a service to see its details.')</p>
                             <dl class="zk-sd">
-                                <div><dt>@lang('Price')</dt><dd>@{{ pricePer || '—' }} {{ auth()->user()->currency ?: basicControl()->base_currency }} <small v-if="hasQuantity">@lang('per 1000')</small></dd></div>
-                                <div><dt>@lang('Order size')</dt><dd>@{{ minAmount || '—' }} – @{{ maxAmount || '—' }}</dd></div>
-                                <div><dt>@lang('Average time')</dt><dd>@{{ avgTime && avgTime !== 'N/A' ? avgTime : @json(__('Usually starts within minutes')) }}</dd></div>
+                                <div><dt>@lang('Price')</dt><dd v-cloak>@{{ pricePer || '—' }} {{ auth()->user()->currency ?: basicControl()->base_currency }} <small v-if="hasQuantity">@lang('per 1000')</small></dd></div>
+                                <div><dt>@lang('Order size')</dt><dd v-cloak>@{{ minAmount || '—' }} – @{{ maxAmount || '—' }}</dd></div>
+                                <div><dt>@lang('Average time')</dt><dd v-cloak>@{{ avgTime && avgTime !== 'N/A' ? avgTime : @json(__('Usually starts within minutes')) }}</dd></div>
                             </dl>
                             <div class="zk-sd__desc" v-if="description">
                                 <span class="zk-sd__label">@lang('About this service')</span>
-                                <p>@{{ description }}</p>
+                                <p v-cloak>@{{ description }}</p>
                             </div>
                         </div>
                     </div>
@@ -556,6 +571,18 @@
 @push('script')
     <script>
         // Used by the order form to check the balance before submitting (amounts in the customer's display currency).
+        document.addEventListener('click', function (e) {
+            const b = e.target.closest('.zk-fav-btn');
+            if (!b || !b.dataset.service) return;
+            b.disabled = true;
+            fetch(@json(url('user/favorite')) + '/' + encodeURIComponent(b.dataset.service), {
+                method: 'POST', headers: {'X-CSRF-TOKEN': @json(csrf_token()), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+            }).then(r => r.json()).then(d => {
+                b.classList.toggle('is-on', d.favorite);
+                b.querySelector('i').className = d.favorite ? 'fa-solid fa-star' : 'fa-regular fa-star';
+                Notiflix.Notify.success(d.message);
+            }).catch(() => Notiflix.Notify.failure(@json(__('Could not save. Please try again.')))).finally(() => { b.disabled = false; });
+        });
         window.zkOrderCtx = {
             balance: {{ (float) auth()->user()->balance * (optional(\App\Models\Currency::where('code', auth()->user()->currency)->first())->conversion_rate ?? 1) }},
             rate: {{ optional(\App\Models\Currency::where('code', auth()->user()->currency)->first())->conversion_rate ?? 1 }},

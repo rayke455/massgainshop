@@ -25,6 +25,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:service-price-update')->hourly();
         $schedule->command('model:prune')->dailyAt('03:30');
         $schedule->command('app:check-provider-balance')->hourly()->withoutOverlapping();
+        $schedule->command('app:daily-report')->dailyAt('07:00');
 
         // Heartbeat: the admin dashboard warns when this stops updating (cron not set up / stopped).
         $schedule->call(fn() => \Illuminate\Support\Facades\Cache::forever('zk_cron_last_run', now()->timestamp))->everyMinute();

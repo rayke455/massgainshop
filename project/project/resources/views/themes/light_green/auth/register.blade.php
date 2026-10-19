@@ -1,15 +1,33 @@
 @extends(template().'layouts.app')
 @section('title',trans('Register'))
 @section('content')
-    <section class="zk-auth">
+    <section class="zk-auth zk-signup">
         <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-xl-5 col-lg-6 col-md-8">
+            <div class="row justify-content-center align-items-center g-5">
+                <div class="col-lg-6 zk-signup__intro">
+                    <span class="zk-eyebrow">@lang('Your next chapter starts here')</span>
+                    <h2>@lang('Big ideas.')<br><span>@lang('More possibilities.')</span></h2>
+                    <p class="zk-signup__lead">@lang('Bring your social media goals together in one place. Create an account, explore services, and grow at your own pace.')</p>
+                    <div class="zk-signup__platforms" aria-label="@lang('Supported platforms')">
+                        @foreach(['Instagram', 'TikTok', 'YouTube', 'Facebook', 'Telegram', 'WhatsApp'] as $platform)
+                            @php($brand = zkBrand($platform))
+                            <span title="{{ $platform }}" style="--platform-color: {{ $brand[1] }}"><i class="fa-brands fa-{{ $brand[0] }}" aria-hidden="true"></i><span class="visually-hidden">{{ $platform }}</span></span>
+                        @endforeach
+                    </div>
+                    <ol class="zk-signup__steps">
+                        <li><span>01</span><div><strong>@lang('Make it yours')</strong><p>@lang('Set up your free account with a few simple details.')</p></div></li>
+                        <li><span>02</span><div><strong>@lang('Find your fit')</strong><p>@lang('Browse platforms, compare services, and see prices upfront.')</p></div></li>
+                        <li><span>03</span><div><strong>@lang('Stay in control')</strong><p>@lang('Add funds when you are ready and track orders from your dashboard.')</p></div></li>
+                    </ol>
+                    <a class="zk-signup__explore" href="{{ route('services') }}">@lang('Explore services first') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
+                <div class="col-lg-6 col-md-10 zk-signup__form">
                     <div class="zk-auth__card">
                         <div class="zk-auth__head">
                             <span class="zk-eyebrow">@lang('Free account')</span>
                             <h1 class="zk-auth__title">@lang('Create your account')</h1>
-                            <p>@lang('Start growing in less than a minute. No credit card required.')</p>
+                            <p>@lang('A fresh start for your social media journey.')</p>
+                            <div class="zk-signup__login">@lang('Already a member?') <a href="{{ route('login') }}">@lang('Log in')</a></div>
                         </div>
 
                         @if(config('socialite.google_status') || config('socialite.facebook_status') || config('socialite.github_status'))
@@ -33,8 +51,9 @@
                             <div class="zk-auth__divider"><span>@lang('or sign up with email')</span></div>
                         @endif
 
-                        <form action="{{ route('register') }}" method="post" novalidate>
+                        <form action="{{ route('register') }}" method="post">
                             @csrf
+                            <input type="hidden" name="signup_country" id="signup-country" value="{{ old('signup_country') }}">
 
                             @if(session()->get('sponsor') != null)
                                 <div class="zk-field">
@@ -49,7 +68,7 @@
                                 <input type="text" class="form-control @error('username') is-invalid @enderror"
                                        name="username" id="username" value="{{ old('username') }}"
                                        placeholder="@lang('e.g. zirka_fan')" autocomplete="username"
-                                       autocapitalize="none" spellcheck="false" minlength="5" required>
+                                       autocapitalize="none" spellcheck="false" minlength="5" maxlength="60" required>
                                 @error('username')
                                 <span class="invalid-feedback d-block">{{ $message }}</span>
                                 @else
@@ -61,20 +80,19 @@
                                 <label for="email">@lang('Email')</label>
                                 <input type="email" class="form-control @error('email') is-invalid @enderror"
                                        name="email" id="email" value="{{ old('email') }}"
-                                       placeholder="@lang('you@example.com')" autocomplete="email" required>
+                                       placeholder="@lang('you@example.com')" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="255" required>
                                 @error('email')
                                 <span class="invalid-feedback d-block">{{ $message }}</span>
                                 @enderror
                             </div>
 
                             <div class="zk-field">
-                                <label for="telephone">@lang('Phone number')</label>
-                                <input type="hidden" id="country_code" name="country_code"
-                                       value="{{ old('country_code', $country_code ? strtolower($country_code) : 'us') }}">
-                                <input type="hidden" id="phone_code" name="phone_code" value="{{ old('phone_code') }}">
+                                <label for="telephone">@lang('WhatsApp number')</label>
                                 <input id="telephone" class="form-control @error('phone') is-invalid @enderror"
-                                       name="phone" type="tel" value="{{ old('phone') }}" autocomplete="tel-national"
-                                       required>
+                                       name="phone" type="tel" value="{{ old('phone') }}" autocomplete="tel"
+                                       placeholder="+254712345678" maxlength="25"
+                                       aria-describedby="phone-hint" required>
+                                <small class="zk-hint" id="phone-hint">@lang('Enter your full WhatsApp number, including the country code (e.g. +254712345678).')</small>
                                 @error('phone')
                                 <span class="invalid-feedback d-block">{{ $message }}</span>
                                 @enderror
@@ -85,11 +103,18 @@
                                 <div class="password-box">
                                     <input type="password" class="form-control password @error('password') is-invalid @enderror"
                                            name="password" id="password" placeholder="@lang('At least 6 characters')"
-                                           autocomplete="new-password" minlength="6" required>
-                                    <button type="button" class="zk-auth__eye" aria-label="@lang('Show password')">
+                                           autocomplete="new-password" minlength="6" aria-describedby="password-hint" required>
+                                    <button type="button" class="zk-auth__eye" aria-controls="password" aria-pressed="false" aria-label="@lang('Show password')">
                                         <i class="fa-regular fa-eye"></i>
                                     </button>
                                 </div>
+                                <small class="zk-hint" id="password-hint">
+                                    @if($basicControl->strong_password)
+                                        @lang('Use at least 6 characters, with uppercase and lowercase letters, a number, and a symbol. Avoid previously exposed passwords.')
+                                    @else
+                                        @lang('Use at least 6 characters. A longer, unique password is best.')
+                                    @endif
+                                </small>
                                 @error('password')
                                 <span class="invalid-feedback d-block">{{ $message }}</span>
                                 @enderror
@@ -120,7 +145,8 @@
                                 </div>
                             @endif
 
-                            <button type="submit" class="zk-btn zk-btn--primary w-100 mt-2">@lang('Create account')</button>
+                            <button type="submit" class="zk-btn zk-btn--primary w-100 mt-2">@lang('Create free account') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></button>
+                            <p class="zk-signup__note"><i class="fa-regular fa-circle-check" aria-hidden="true"></i> @lang('Free to join. No payment details needed.')</p>
 
                             <p class="zk-auth__terms">
                                 @lang('By signing up you agree to our')
@@ -130,9 +156,6 @@
                             </p>
                         </form>
                     </div>
-                    <p class="zk-auth__switch">
-                        @lang('Already have an account?') <a href="{{ route('login') }}">@lang('Log in')</a>
-                    </p>
                 </div>
             </div>
         </div>
@@ -141,12 +164,7 @@
     @include(template(). 'sections.footer')
 @endsection
 
-@push('css-lib')
-    <link rel="stylesheet" href="{{ asset(template(true). 'css/intlTelInput.min.css') }}">
-@endpush
-
 @push('js-lib')
-    <script src="{{ asset(template(true). 'js/intlTelInput.min.js') }}"></script>
     @if($basicControl->google_recaptcha == 1 && $basicControl->google_recaptcha_register == 1)
         <script async src="https://www.google.com/recaptcha/api.js"></script>
     @endif
@@ -156,33 +174,19 @@
     <script>
         "use strict";
         $(document).ready(function () {
-            const input = document.querySelector("#telephone");
-            const countryField = document.querySelector("#country_code");
-            const phoneCodeField = document.querySelector("#phone_code");
-
-            const iti = window.intlTelInput(input, {
-                initialCountry: countryField.value || "us",
-                separateDialCode: true,
-            });
-
-            // Keep the hidden fields in sync with the flag the user picks.
-            const syncCountry = () => {
-                const data = iti.getSelectedCountryData();
-                if (data && data.iso2) {
-                    countryField.value = data.iso2;
-                    phoneCodeField.value = '+' + data.dialCode;
-                }
-            };
-            input.addEventListener('countrychange', syncCountry);
-            syncCountry();
-
+            if (window.zkCountry) {
+                window.zkCountry().then(country => {
+                    if (/^[A-Z]{2}$/.test(country)) document.getElementById('signup-country').value = country;
+                }).catch(() => {});
+            }
             const eye = document.querySelector('.zk-auth__eye');
             const password = document.querySelector('#password');
             eye.addEventListener('click', function () {
                 const show = password.type === 'password';
                 password.type = show ? 'text' : 'password';
                 eye.querySelector('i').classList.toggle('fa-eye-slash', show);
-                eye.setAttribute('aria-label', show ? '@lang('Hide password')' : '@lang('Show password')');
+                eye.setAttribute('aria-pressed', String(show));
+                eye.setAttribute('aria-label', show ? @json(__('Hide password')) : @json(__('Show password')));
             });
         });
 

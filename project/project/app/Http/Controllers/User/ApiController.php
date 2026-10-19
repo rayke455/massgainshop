@@ -22,7 +22,7 @@ class ApiController extends Controller
     public function apiGenerate()
     {
         $user = Auth::user();
-        $user->api_token = Str::random(20);
+        $user->api_token = Str::random(40);
         $user->save();
 
         return back()->with([

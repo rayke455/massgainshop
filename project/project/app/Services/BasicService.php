@@ -53,6 +53,9 @@ class BasicService
                     $deposit->transactional()->save($transaction);
                     $deposit->save();
 
+                    // Coupon + automatic deposit bonus (credited once, as its own transaction).
+                    \App\Services\Growth::creditDepositBonus($deposit, $user);
+
                     if (basicControl()->deposit_commission == 1) {
                         $this->setBonus($user, $deposit->amount, $type = 'deposit');
                     }

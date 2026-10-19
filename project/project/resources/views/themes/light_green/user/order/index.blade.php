@@ -1,6 +1,10 @@
 @extends(template().'layouts.user')
 @section('title', trans('All Orders'))
 @section('content')
+    @php
+        $zkReviewsOn = \App\Services\Growth::get('reviews.enabled', true);
+        $zkReviewed = \App\Models\Review::where('user_id', auth()->id())->pluck('order_id')->flip();
+    @endphp
     <div class="dashboard-wrapper">
         <div class="container">
             <div class="breadcrumb-area">
@@ -204,6 +208,23 @@
                                                                 </a>
                                                             </li>
                                                         @endif
+                                                        @if(optional($order->service)->service_status == 1 && $order->link)
+                                                            <li><a class="dropdown-item" href="{{ route('user.order.create', ['serviceId' => $order->service_id, 'link' => $order->link, 'quantity' => $order->quantity]) }}">
+                                                                    <i class="fa-regular fa-rotate-right me-1"></i> @lang("Buy again")</a></li>
+                                                        @endif
+                                                        @if(in_array($order->status, ['pending', 'awaiting', 'processing']))
+                                                            <li>
+                                                                <form method="post" action="{{ route('user.order.cancel', $order->id) }}" onsubmit="return confirm(@json(__('Cancel this order? If it has not started, the amount goes back to your balance.')))">
+                                                                    @csrf
+                                                                    <button type="submit" class="dropdown-item text-danger"><i class="fa-regular fa-ban me-1"></i> @lang("Cancel order")</button>
+                                                                </form>
+                                                            </li>
+                                                        @endif
+                                                        @if($order->status === 'completed' && $zkReviewsOn && !isset($zkReviewed[$order->id]))
+                                                            <li><a class="dropdown-item zkRateBtn" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#zkRateModal"
+                                                                   data-route="{{ route('user.order.review', $order->id) }}" data-title="#{{ $order->id }} · {{ \Illuminate\Support\Str::limit(optional($order->service)->service_title, 50) }}">
+                                                                    <i class="fa-regular fa-star me-1"></i> @lang("Rate this order")</a></li>
+                                                        @endif
                                                         @if($order->canBeRefilled())
                                                             <li><a class="dropdown-item refillOrderBtn"
                                                                    href="javascript:void(0)"
@@ -250,6 +271,48 @@
     @include( template(). 'user.order.components.order_details')
     @include( template(). 'user.order.components.order_now_modal')
     @include( template(). 'user.order.components.refill_modal')
+    <div class="modal fade" id="zkRateModal" tabindex="-1" aria-labelledby="zkRateTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" method="post" id="zkRateForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="zkRateTitle">@lang('Rate your order')</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@lang('Close')"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2" id="zkRateFor"></p>
+                    <div class="zk-stars mb-3" role="radiogroup" aria-label="@lang('Rating')">
+                        @for($i = 5; $i >= 1; $i--)
+                            <input type="radio" name="rating" value="{{ $i }}" id="zkStar{{ $i }}" @checked($i === 5) required>
+                            <label for="zkStar{{ $i }}" title="{{ $i }}">★</label>
+                        @endfor
+                    </div>
+                    <label class="form-label" for="zkRateComment">@lang('Your review')</label>
+                    <textarea class="form-control mb-3" id="zkRateComment" name="comment" rows="3" minlength="10" maxlength="600" required
+                              placeholder="@lang('How was the speed and quality?')"></textarea>
+                    <div class="row g-2">
+                        <div class="col-6"><label class="form-label small" for="zkRateName">@lang('Name to show')</label>
+                            <input class="form-control" id="zkRateName" name="display_name" maxlength="60" value="{{ ucfirst(auth()->user()->username) }}"></div>
+                        <div class="col-6"><label class="form-label small" for="zkRateCountry">@lang('Country (optional)')</label>
+                            <input class="form-control" id="zkRateCountry" name="country" maxlength="60" value="{{ auth()->user()->country }}"></div>
+                    </div>
+                    <small class="text-muted d-block mt-2">@lang('Reviews appear on our website after a quick check.')</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="zk-btn zk-btn--primary">@lang('Send review')</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        'use strict';
+        document.addEventListener('click', function (e) {
+            const b = e.target.closest('.zkRateBtn');
+            if (!b) return;
+            document.getElementById('zkRateForm').action = b.dataset.route;
+            document.getElementById('zkRateFor').textContent = b.dataset.title;
+        });
+    </script>
 @endsection
 
 @include( template(). 'user.order.components.orders_common_scripts')

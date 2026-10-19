@@ -12,11 +12,11 @@
                  alt="{{ $basicControl->site_title }} Logo"
                  data-hs-theme-appearance="dark">
             <img class="navbar-brand-logo-mini"
-                 src="{{ getFile($basicControl->admin_logo_driver, $basicControl->admin_logo, true) }}"
+                 src="{{ getFile($basicControl->favicon_driver, $basicControl->favicon, true) }}"
                  alt="{{ $basicControl->site_title }} Logo"
                  data-hs-theme-appearance="default">
             <img class="navbar-brand-logo-mini"
-                 src="{{ getFile($basicControl->admin_logo_driver, $basicControl->admin_logo, true) }}"
+                 src="{{ getFile($basicControl->favicon_driver, $basicControl->favicon, true) }}"
                  alt="Logo"
                  data-hs-theme-appearance="dark">
         </a>

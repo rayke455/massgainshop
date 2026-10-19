@@ -43,10 +43,10 @@ class SupportTicketController extends Controller
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->orderBy('id', 'desc')
@@ -97,7 +97,7 @@ class SupportTicketController extends Controller
 
     public function ticketView($ticketId): \Illuminate\Contracts\View\View|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\Foundation\Application
     {
-        $ticket = SupportTicket::where('ticket', $ticketId)->latest()->with('messages')->firstOrFail();
+        $ticket = SupportTicket::where('ticket', $ticketId)->where('user_id', auth()->id())->latest()->with('messages')->firstOrFail();
         $user = auth()->user();
         return view(template() . 'user.support_ticket.view', compact('ticket', 'user'));
     }
@@ -118,7 +118,7 @@ class SupportTicketController extends Controller
             ]);
 
             try {
-                $ticket = SupportTicket::findOrFail($id);
+                $ticket = SupportTicket::where('user_id', auth()->id())->findOrFail($id);
                 $ticket->update([
                     'status' => 2,
                     'last_reply' => Carbon::now()
@@ -161,7 +161,7 @@ class SupportTicketController extends Controller
             }
 
         } elseif ($request->reply_ticket == 2) {
-            $ticket = SupportTicket::findOrFail($id);
+            $ticket = SupportTicket::where('user_id', auth()->id())->findOrFail($id);
             $ticket->update([
                 'status' => 3,
                 'last_reply' => Carbon::now()
@@ -191,7 +191,16 @@ class SupportTicketController extends Controller
 
     public function download($ticket_id)
     {
-        $attachment = SupportTicketAttachment::with('supportMessage', 'supportMessage.ticket')->findOrFail(decrypt($ticket_id));
+        try {
+            $attachment = SupportTicketAttachment::with('supportMessage', 'supportMessage.ticket')->findOrFail(decrypt($ticket_id));
+        } catch (\Throwable $e) {
+            abort(404);
+        }
+
+        if (optional(optional($attachment->supportMessage)->ticket)->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $file = $attachment->file;
         $full_path = getFile($attachment->driver, $file);
         $title = slug($attachment->supportMessage->ticket->subject) . '-' . $file;

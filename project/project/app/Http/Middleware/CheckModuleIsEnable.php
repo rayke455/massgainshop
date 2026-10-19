@@ -21,6 +21,10 @@ class CheckModuleIsEnable
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Rented panel domains are checked by ResolveRentalHost (only customer pages reach this point).
+        if ($request->attributes->get('rental_host')) {
+            return $next($request);
+        }
         $mainSite = config('app.url');
         $mainDomain = parse_url($mainSite);
         $childDomain = request()->getHost();

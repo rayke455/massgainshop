@@ -52,16 +52,41 @@
             }
 
             let loading = false;
+            // Start Google's translator only after the page's own apps (Vue) have started,
+            // so it can never rewrite a Vue template before Vue reads it.
+            function whenPageReady(fn) {
+                if (document.readyState === 'complete') return setTimeout(fn, 0);
+                let done = false;
+                const go = () => { if (!done) { done = true; fn(); } };
+                window.addEventListener('load', go, {once: true});
+                setTimeout(go, 4000); // don't wait forever for a slow image
+            }
+
             function loadTranslator() {
                 if (loading) return;
                 loading = true;
                 window.zkGtInit = function () {
                     new google.translate.TranslateElement({pageLanguage: 'en', autoDisplay: false}, 'zk_gt');
                 };
-                const s = document.createElement('script');
-                s.src = 'https://translate.google.com/translate_a/element.js?cb=zkGtInit';
-                s.async = true;
-                document.head.appendChild(s);
+                whenPageReady(function () {
+                    const s = document.createElement('script');
+                    s.src = 'https://translate.google.com/translate_a/element.js?cb=zkGtInit';
+                    s.async = true;
+                    document.head.appendChild(s);
+                });
+            }
+
+            // Select the language in Google's hidden menu once it exists (the cookie alone is only read on page load).
+            function selectInTranslator(lang, tries) {
+                const combo = document.querySelector('.goog-te-combo');
+                if (combo && combo.options.length > 1) {
+                    if (combo.value !== lang) {
+                        combo.value = lang;
+                        combo.dispatchEvent(new Event('change'));
+                    }
+                    return;
+                }
+                if ((tries || 0) < 60) setTimeout(() => selectInTranslator(lang, (tries || 0) + 1), 250);
             }
 
             function switchTo(lang) {
@@ -71,13 +96,8 @@
                     return;
                 }
                 setCookie(lang);
-                const combo = document.querySelector('.goog-te-combo');
-                if (combo) {
-                    combo.value = lang;
-                    combo.dispatchEvent(new Event('change'));
-                } else {
-                    loadTranslator();
-                }
+                loadTranslator();
+                selectInTranslator(lang);
             }
 
             function syncPickers(lang) {
@@ -99,6 +119,7 @@
                 if (lang && lang !== 'en') {
                     setCookie(lang);
                     loadTranslator();
+                    selectInTranslator(lang);
                 } else {
                     setCookie('');
                 }

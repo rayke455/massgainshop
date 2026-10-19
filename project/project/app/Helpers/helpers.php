@@ -165,7 +165,8 @@ if (!function_exists('basicControl')) {
                 \Cache::put('ConfigureSetting', $configure);
             }
 
-            return $configure;
+            // On a rented panel's domain the whole site shows the panel's name and logo.
+            return app()->bound('rental.panel') ? \App\Services\PanelRentals::brand($configure) : $configure;
         } catch (\Exception $e) {
         }
     }
@@ -1336,8 +1337,9 @@ if (!function_exists('zkPerK')) {
     /** Per-1,000 prices are often tiny (0.0012): show up to 4 decimals, at least 2, with the base currency. */
     function zkPerK($amount, $currency = null)
     {
-        $decimals = 4;
-        $value = round((float)$amount, 4);
+        // Per-1k prices can be fractions of a cent (0.0018); bigger amounts read better with 2 decimals.
+        $decimals = abs((float) $amount) < 1 ? 4 : 2;
+        $value = round((float)$amount, $decimals);
         // Use only as many decimals as needed, but never fewer than 2 (4 → 4.00, 0.2086 → 0.2086, 0.25 → 0.25).
         while ($decimals > 2 && round($value, $decimals - 1) == $value) {
             $decimals--;
@@ -1400,6 +1402,16 @@ if (!function_exists('zkShowPrice')) {
         // Per-1k prices can be fractions of a cent, so keep up to 4 decimals ("0.0018 USD", not "0 USD").
         $c = zkVisitorCurrency();
         return $c ? zkPerK((float) $amount * (float) $c->conversion_rate, $c->code) : zkPerK($amount);
+    }
+}
+
+if (!function_exists('zkShowMoney')) {
+    /** A base-currency amount of money in the visitor's currency, always 2 decimals ("2,453.02 KES"). */
+    function zkShowMoney($amount)
+    {
+        $c = zkVisitorCurrency();
+        $v = $c ? (float) $amount * (float) $c->conversion_rate : (float) $amount;
+        return number_format($v, 2) . ' ' . ($c->code ?? basicControl()->base_currency);
     }
 }
 

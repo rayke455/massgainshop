@@ -16,5 +16,7 @@ class VerifyCsrfToken extends Middleware
         '*sort-payment-methods*',
         '*admin/upload/ck/image*',
         'mpesa/webhook', // Safaricom posts payment callbacks here (verified against their API before crediting)
+        'snippe/webhook',
+        'rentals/payout-result', // Safaricom B2C/B2B results // Snippe payment notifications (signature + API re-check before crediting)
     ];
 }

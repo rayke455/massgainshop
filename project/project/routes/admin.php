@@ -60,7 +60,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 
-Route::get('/set-app-url', function () {
+Route::middleware('auth:admin')->get('/set-app-url', function () {
     $host = request()->getScheme() . '://' . request()->getHost();
     app(\App\Services\BasicService::class)->setEnv(['APP_URL' => $host]);
     \Artisan::call('config:clear');
@@ -74,7 +74,7 @@ Route::get('/set-app-url', function () {
 
 
 
-Route::get('clear', function () {
+Route::middleware('auth:admin')->get('clear', function () {
     Illuminate\Support\Facades\Artisan::call('optimize:clear');
     $previousUrl = url()->previous();
     if (str_contains($previousUrl, 'push-notification')) {
@@ -83,16 +83,16 @@ Route::get('clear', function () {
     return redirect()->back(fallback: '/')->with('success', 'Cache Cleared Successfully');
 })->name('clear');
 
-Route::get('queue-work', function () {
+Route::middleware('auth:admin')->get('queue-work', function () {
     return Illuminate\Support\Facades\Artisan::call('queue:work', ['--stop-when-empty' => true]);
 })->name('queue.work');
 
-Route::get('schedule-run', function () {
+Route::middleware('auth:admin')->get('schedule-run', function () {
     return Illuminate\Support\Facades\Artisan::call('schedule:run');
 })->name('schedule:run');
 
 
-Route::get('migrate', function () {
+Route::middleware('auth:admin')->get('migrate', function () {
     Illuminate\Support\Facades\Artisan::call('migrate');
     $output = Illuminate\Support\Facades\Artisan::output();
 
@@ -126,6 +126,12 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
             Route::post('two-fa-verify', [VerificationController::class, 'twoStepVerify'])->name('2step.verify');
 
             Route::middleware('adminVerificationCheck')->group(function () {
+                Route::get('guest-orders', [\App\Http\Controllers\GuestOrderController::class, 'admin'])->name('guest.orders');
+                Route::get('panel-rentals', [\App\Http\Controllers\PanelRentalController::class, 'admin'])->name('rentals.index');
+                Route::post('panel-rentals/settings', [\App\Http\Controllers\PanelRentalController::class, 'adminSettings'])->name('rentals.settings');
+                Route::post('panel-rentals/{id}', [\App\Http\Controllers\PanelRentalController::class, 'adminPanel'])->whereNumber('id')->name('rentals.panel');
+                Route::get('panel-rentals/payouts', [\App\Http\Controllers\PanelRentalController::class, 'adminPayouts'])->name('rentals.payouts');
+                Route::post('panel-rentals/payouts/{id}', [\App\Http\Controllers\PanelRentalController::class, 'adminPayoutAction'])->whereNumber('id')->name('rentals.payout.action');
 
                 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
@@ -434,6 +440,16 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
 
 
                 // Only index/store exist in the controller; full resources exposed pages that crashed.
+                // Growth: coupons, deposit bonuses, VIP levels, reviews, protection settings
+                Route::get('growth', [\App\Http\Controllers\Admin\GrowthController::class, 'index'])->name('growth.index');
+                Route::post('growth/coupons', [\App\Http\Controllers\Admin\GrowthController::class, 'couponStore'])->name('growth.coupon.store');
+                Route::post('growth/coupons/{coupon}/toggle', [\App\Http\Controllers\Admin\GrowthController::class, 'couponToggle'])->name('growth.coupon.toggle');
+                Route::delete('growth/coupons/{coupon}', [\App\Http\Controllers\Admin\GrowthController::class, 'couponDelete'])->name('growth.coupon.delete');
+                Route::post('growth/bonuses', [\App\Http\Controllers\Admin\GrowthController::class, 'bonusSave'])->name('growth.bonus.save');
+                Route::post('growth/vip', [\App\Http\Controllers\Admin\GrowthController::class, 'vipSave'])->name('growth.vip.save');
+                Route::post('growth/reviews/{review}/status', [\App\Http\Controllers\Admin\GrowthController::class, 'reviewStatus'])->name('growth.review.status');
+                Route::delete('growth/reviews/{review}', [\App\Http\Controllers\Admin\GrowthController::class, 'reviewDelete'])->name('growth.review.delete');
+                Route::post('growth/settings', [\App\Http\Controllers\Admin\GrowthController::class, 'settingsSave'])->name('growth.settings.save');
                 Route::resource('referral-commission', ReferralCommissionController::class)->only(['index', 'store']);
                 Route::post('referral-commission/configure', [ReferralCommissionController::class, 'configure'])->name('referral.commission.configure');
 

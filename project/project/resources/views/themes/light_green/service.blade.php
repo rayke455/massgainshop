@@ -15,14 +15,20 @@
                         <div class="card-body">
                             <div class="row g-3">
                                 @forelse($socialMedia as $item)
-                                    <div class="col-lg-3 col-md-4 col-sm-6">
+                                    <div class="col-6 col-md-4 col-lg-3">
                                         <button type="button" class="social-btn w-100"
                                                 :class="{ activeSocialMedia: '{{ $item->id }}' == isActive }"
                                                 @click="toggleActive('{{ $item->id   }}')"
                                                 @click.prevent="getServices('{{ $item->id   }}')">
-                                            <img class="social-media-img"
-                                                 src="{{ getFile($item->icon_driver, $item->icon) }}"
-                                                 alt="{{ $item->name }}">
+                                            @php($platformBrand = zkBrand($item->name))
+                                            @if($platformBrand)
+                                                <i class="fa-brands fa-{{ $platformBrand[0] }} zk-platform-icon"
+                                                   style="--platform-color: {{ $platformBrand[1] }}" aria-hidden="true"></i>
+                                            @else
+                                                <img class="social-media-img"
+                                                     src="{{ getFile($item->icon_driver, $item->icon) }}"
+                                                     alt="">
+                                            @endif
                                             {{ $item->name }}
                                         </button>
                                     </div>
@@ -111,6 +117,7 @@
                                                     <button type="button" data-bs-toggle="modal"
                                                             data-bs-target="#describeModal"
                                                             class="action-btn-primary details border-0"
+                                                            aria-label="@lang('View service description')"
                                                             :data-id="service.id"
                                                             :data-title="service.service_title"
                                                             :data-description="service.description">

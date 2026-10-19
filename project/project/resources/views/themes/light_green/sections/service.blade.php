@@ -22,9 +22,9 @@
 <section class="zk-section zk-section--soft" id="services">
     <div class="container">
         <div class="zk-head zk-reveal">
-            <span class="zk-eyebrow">@lang(@$service['single']['title'])</span>
-            <h2 class="zk-title">{!! zkHighlight(__(@$service['single']['heading'])) !!}</h2>
-            <p class="zk-lead">@lang(strip_tags(@$service['single']['description']))</p>
+            <span class="zk-eyebrow">@lang('Explore services')</span>
+            <h2 class="zk-title">@lang('Your platform.') <span class="zk-hl">@lang('Your next step.')</span></h2>
+            <p class="zk-lead">@lang('Choose a platform to compare services, prices, and order limits before you get started.')</p>
         </div>
 
         @if($zkPlatforms->isNotEmpty())
@@ -58,7 +58,7 @@
                             ->whereIn('category_id', $cats->pluck('id'))
                             ->orderByRaw('CAST(price AS DECIMAL(16,6)) asc')
                             ->take(6)->get();
-                        $zkBuyUrl = auth()->check() ? route('user.order.create') : route('register');
+                        $zkBuyUrl = auth()->check() ? route('user.order.create') : route('guest.order');
                     @endphp
                     <div class="zk-ppanel__side">
                         <ul class="zk-ppanel__list zk-ppanel__list--services">

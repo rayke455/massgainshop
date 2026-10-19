@@ -10,13 +10,17 @@
     <link rel="stylesheet" href="{{ asset(template(true). 'css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset(template(true). 'css/style.css') }}" />
 
-    @laravelPWA
+    @unless(app()->bound('rental.panel'))
+        @laravelPWA
+    @endunless
 </head>
 
 <body>
 @yield('content')
 
-@include(template().'partials.pwa')
+@unless(app()->bound('rental.panel'))
+    @include(template().'partials.pwa')
+@endunless
 
 <script src="{{ asset(template(true). 'js/bootstrap.bundle.min.js') }}"></script>
 </body>

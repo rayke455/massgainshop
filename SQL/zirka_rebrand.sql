@@ -156,3 +156,7 @@ UPDATE content_details SET description = REPLACE(description, '1Top SMMPanel', '
 
 -- Testimonial text named another panel.
 UPDATE content_details SET description = REPLACE(description, 'Binary SMM', 'Zirka Social') WHERE description LIKE '%Binary SMM%';
+-- Broken JSON in notification template placeholders made their edit pages crash.
+UPDATE notification_templates SET short_keys = '{"amount":"Amount","feedback":"Admin feedback","charge":"Payment Charge","gateway_name":"Gateway Name","transaction":"Transaction Id"}' WHERE template_key = 'PAYMENT_REJECTED';
+UPDATE notification_templates SET short_keys = '{"domain":"Domain name","username":"Username"}' WHERE template_key IN ('AUTOMATICALLY_RENEW_CHILD_PANEL','FAIL_AUTOMATICALLY_RENEW_CHILD_PANEL');
+UPDATE notification_templates SET short_keys = '{"username":"Username"}' WHERE template_key = 'ADDED_USER_CHILD_PANEL' AND JSON_VALID(short_keys) = 0;

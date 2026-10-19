@@ -28,13 +28,13 @@ class VerificationController extends Controller
         $admin = auth()->guard('admin')->user();
 
         if (!$admin->status) {
-
             Auth::guard('admin')->logout();
-
+            return redirect()->route('admin.login');
         } elseif (!$admin->two_fa_verify) {
             return view('admin.auth.verification.two_step_security', compact('admin'));
         }
-        return redirect()->route('user.dashboard');
+        // Already verified: go to the admin dashboard (this used to send admins to the customer dashboard).
+        return redirect()->route('admin.dashboard');
     }
 
 

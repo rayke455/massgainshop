@@ -14,7 +14,7 @@ class Deposit extends Model
 {
     use HasFactory, Prunable;
 
-    protected $fillable = ['depositable_id', 'depositable_type', 'user_id', 'child_panel_id', 'payment_method_id',
+    protected $fillable = ['coupon_id', 'bonus_amount', 'depositable_id', 'depositable_type', 'user_id', 'child_panel_id', 'payment_method_id',
         'payment_method_currency', 'amount', 'percentage_charge', 'fixed_charge', 'payable_amount',
         'base_currency_charge', 'payable_amount_in_base_currency', 'btc_amount', 'btc_wallet', 'payment_id',
         'information', 'trx_id', 'status', 'note', 'type'];

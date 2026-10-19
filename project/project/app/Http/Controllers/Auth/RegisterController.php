@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\UserSystemInfo;
 use App\Http\Controllers\Controller;
 use App\Models\ContentDetails;
+use App\Models\Currency;
 use App\Models\User;
 use App\Models\UserLogin;
 use App\Rules\PhoneLength;
@@ -75,8 +76,8 @@ class RegisterController extends Controller
             if ($iso && strtoupper($country['code']) === $iso) {
                 return $country['phoneLength'];
             }
-            if ($byDialCode === null && $country['phone_code'] == $phoneCode) {
-                $byDialCode = $country['phoneLength'];
+            if ($country['phone_code'] == $phoneCode) {
+                $byDialCode = array_merge($byDialCode ?? [], (array)$country['phoneLength']);
             }
         }
         return $byDialCode ?? 15;
@@ -88,6 +89,27 @@ class RegisterController extends Controller
      */
     protected function normalizePhone(array $data)
     {
+        // The single-field signup supplies an international number; older themes
+        // still submit a separate dial code and national number.
+        if (empty($data['phone_code'])) {
+            $raw = trim((string)($data['phone'] ?? ''));
+            $international = preg_replace('/[\s().-]+/', '', $raw);
+            $data['country_code'] = null;
+            $data['phone_code'] = '';
+            if (preg_match('/^\+[1-9][0-9]{6,14}$/', $international)) {
+                $countries = collect(config('country'))->sortByDesc(fn ($country) => strlen($country['phone_code']));
+                foreach ($countries as $country) {
+                    if (str_starts_with($international, $country['phone_code'])) {
+                        $data['phone_code'] = $country['phone_code'];
+                        $data['phone'] = substr($international, strlen($country['phone_code']));
+                        $matches = $countries->where('phone_code', $country['phone_code']);
+                        // A shared calling code does not identify a country reliably.
+                        $data['country_code'] = $matches->count() === 1 ? strtolower($country['code']) : null;
+                        break;
+                    }
+                }
+            }
+        }
         $phone = preg_replace('/\D+/', '', (string)($data['phone'] ?? ''));
         $lengths = (array)$this->phoneLengthFor($data);
         if (str_starts_with($phone, '0') && !in_array(strlen($phone), $lengths) && in_array(strlen($phone) - 1, $lengths)) {
@@ -133,9 +155,29 @@ class RegisterController extends Controller
             ];
         }
 
-        return Validator::make($data, $rules, [
+        $validator = Validator::make($data, $rules, [
             'g-recaptcha-response.required' => 'The google recaptcha is required.',
         ]);
+        $validator->after(function ($validator) use ($data) {
+            if (empty($data['phone_code'])) {
+                $validator->errors()->add('phone', __('Enter a valid WhatsApp number including the country code, for example +254712345678.'));
+            }
+            // Fraud protection (Admin → Growth → Settings)
+            if (\App\Services\Growth::get('fraud.block_disposable', true) && \App\Services\Growth::isDisposableEmail($data['email'] ?? '')) {
+                $validator->errors()->add('email', __('Please use a real email address (temporary email addresses are not accepted).'));
+            }
+            $limit = (int) \App\Services\Growth::get('fraud.signups_per_ip_day', 3);
+            if ($limit > 0 && (int) \Illuminate\Support\Facades\Cache::get($this->signupKey(), 0) >= $limit) {
+                $validator->errors()->add('username', __('Too many accounts were created from this connection today. Please try again tomorrow or contact support.'));
+            }
+        });
+        return $validator;
+    }
+
+    /** Sign-ups per internet connection per day. */
+    protected function signupKey(): string
+    {
+        return 'zk_signups_' . sha1((string) request()->ip()) . '_' . now()->format('Ymd');
     }
 
     /** Local currency for the sign-up country (only if it's switched on in Admin → Currencies). */
@@ -143,6 +185,21 @@ class RegisterController extends Controller
     {
         $code = config('country_currency.' . strtoupper((string) $iso));
         return $code && \App\Models\Currency::where('code', $code)->where('status', 1)->exists() ? $code : null;
+    }
+
+    protected function signupCurrency(array $data): ?string
+    {
+        // A visitor's selected/display currency survives registration. Location
+        // is only a preference hint, never used for authentication or permissions.
+        $cookie = json_decode((string) request()->cookie('currency'), true);
+        $preferred = is_array($cookie) ? ($cookie['code'] ?? null) : null;
+        if (($cookie['_source'] ?? 'manual') === 'manual' && is_string($preferred) && Currency::where('code', $preferred)->where('status', 1)->exists()) {
+            return $preferred;
+        }
+        $country = strtoupper((string) ($data['signup_country'] ?? ''));
+        return $this->currencyForCountry(preg_match('/^[A-Z]{2}$/', $country) ? $country : null)
+            ?? (is_string($preferred) && Currency::where('code', $preferred)->where('status', 1)->exists() ? $preferred : null)
+            ?? $this->currencyForCountry($data['country_code'] ?? null);
     }
 
     protected function create(array $data)
@@ -164,13 +221,15 @@ class RegisterController extends Controller
             'username' => $data['username'],
             'email' => $data['email'],
             'country_code' => $data['country_code'] ?? null,
-            'currency' => $this->currencyForCountry($data['country_code'] ?? null),
+            'rental_panel_id' => \App\Services\PanelRentals::currentId(),   // signed up on a rented panel → that panel's customer
+            'currency' => $this->signupCurrency($data),
             'phone_code' => $data['phone_code'],
             'phone' => $data['phone'],
             'password' => Hash::make($data['password']),
             'email_verification' => ($basic->email_verification) ? 0 : 1,
             'sms_verification' => ($basic->sms_verification) ? 0 : 1,
-            'referral_id' => ($sponsorId != null) ? $sponsorId->id : null,
+            // The platform's affiliate program doesn't apply to panel customers.
+            'referral_id' => ($sponsorId != null && !\App\Services\PanelRentals::currentId()) ? $sponsorId->id : null,
         ]);
     }
 
@@ -179,6 +238,8 @@ class RegisterController extends Controller
         $this->validator($request->all())->validate();
 
         $user = $this->create($request->all());
+        \Illuminate\Support\Facades\Cache::add($this->signupKey(), 0, now()->endOfDay());
+        \Illuminate\Support\Facades\Cache::increment($this->signupKey());
 
 
         $msg = [

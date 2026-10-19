@@ -51,7 +51,7 @@ class PwaController extends Controller
         if ($request->hasFile('splash')) {
             $file = $request->splash;
             foreach (config('pwacontrol.splash') as $key => $splash) {
-                $upload = $this->fileUpload($file, config('filelocation.pwa.path'), 'splash-' . $key, $key, 'png', 90, $icon, config('pwacontrol.driver'));
+                $upload = $this->fileUpload($file, config('filelocation.pwa.path'), 'splash-' . $key, $key, 'png', 90, $splash, config('pwacontrol.driver'));
                 $this->saveConfig($upload, $key, 'splash');
             }
         }

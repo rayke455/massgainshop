@@ -59,7 +59,8 @@ class User extends Authenticatable
         'remember_token',
         'currency',
         'api_token',
-        'google_id'
+        'google_id',
+        'rental_panel_id',
     ];
 
     protected $hidden = [

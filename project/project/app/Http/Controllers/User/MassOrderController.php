@@ -85,7 +85,7 @@ class MassOrderController extends Controller
                 }
 
                 if ($serviceId) {
-                    $specificRate = floatval(($serviceId->user_rate) ?? $serviceId->price);
+                    $specificRate = \App\Services\Growth::applyVip(floatval(($serviceId->user_rate) ?? $serviceId->price), auth()->user());
                     $price = round(((floatval($singleOrder[1]) * $specificRate) / 1000), basicControl()->fraction_number);
                 }
 
@@ -137,8 +137,15 @@ class MassOrderController extends Controller
 
     public function editDraftOrder(Request $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
-        $draftOrder = DraftMassOrder::find($request->draftOrderId);
-        $service = Service::where('id', $request->serviceId)->first();
+        $draftOrder = DraftMassOrder::where('user_id', auth()->id())->find($request->draftOrderId);
+        if (!$draftOrder) {
+            return response([
+                'status' => 'error',
+                'message' => 'Draft order not found.'
+            ]);
+        }
+
+        $service = Service::userRate()->where('id', $request->serviceId)->first();
 
         if (!$service) {
             return response([
@@ -161,7 +168,7 @@ class MassOrderController extends Controller
             ]);
         }
 
-        $specificRate = floatval(($serviceId->user_rate) ?? $service->price);
+        $specificRate = \App\Services\Growth::applyVip(floatval(($service->user_rate) ?? $service->price), auth()->user());
         $price = round(((floatval($request->quantity) * $specificRate) / 1000), basicControl()->fraction_number);
 
         $draftOrder->update([
@@ -185,6 +192,10 @@ class MassOrderController extends Controller
         $orders = json_decode($request->orders);
         $basic = basicControl();
 
+        if (!is_array($orders) && !is_object($orders)) {
+            return back()->with('error', 'No mass orders were submitted.');
+        }
+
         foreach ($orders as $order) {
 
             $serviceId = Service::userRate()->find($order->service_id);
@@ -192,7 +203,7 @@ class MassOrderController extends Controller
             DB::beginTransaction();
             try {
                 if ($serviceId) {
-                    $specificRate = floatval(($serviceId->user_rate) ?? $serviceId->price);
+                    $specificRate = \App\Services\Growth::applyVip(floatval(($serviceId->user_rate) ?? $serviceId->price), auth()->user());
 
                     $orderM = new Order();
                     $orderM->service_id = $order->service_id;
@@ -274,7 +285,7 @@ class MassOrderController extends Controller
                     }
                     $orderM->save();
                 }
-                $draftMassOrder = DraftMassOrder::find($order->id);
+                $draftMassOrder = DraftMassOrder::where('user_id', auth()->id())->find($order->id ?? null);
                 if ($draftMassOrder) {
                     $draftMassOrder->delete();
                 }

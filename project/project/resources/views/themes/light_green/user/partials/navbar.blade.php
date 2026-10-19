@@ -53,11 +53,11 @@
                     <a class="nav-link nav-icon" href="javascript:void(0)"
                        :data-bs-toggle="items.length > 0 ? 'dropdown' : ''">
                         <i class="fa-light fa-bell"></i>
-                        <span class="badge badge-number">@{{ items.length }}</span>
+                        <span class="badge badge-number" v-cloak>@{{ items.length }}</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications"
                          v-if="items.length > 0">
-                        <div class="dropdown-header">
+                        <div class="dropdown-header" v-cloak>
                             @lang("You have") @{{ items.length }} @lang("new notifications")
                         </div>
                         <div class="dropdown-body">
@@ -115,6 +115,7 @@
                                 <span>@lang("My Profile")</span>
                             </a>
                         </li>
+                        @unless(\App\Services\PanelRentals::current())
                         <li>
                             <a class="dropdown-item d-flex align-items-center" href="{{ route('user.referral') }}">
                                 <i class="fa-light fa-user-group referral-icon"></i>
@@ -140,6 +141,7 @@
                                 <span>@lang("Support Tickets")</span>
                             </a>
                         </li>
+                        @endunless
                         <li>
                             <a class="dropdown-item d-flex align-items-center"
                                href="{{ route('user.two.step.security') }}">

@@ -44,6 +44,7 @@ class BasicControlController extends Controller
 
         try {
             $basic = BasicControl();
+            $oldTitle = trim((string) ($basic->site_title ?? ''));
             $response = BasicControl::updateOrCreate([
                 'id' => $basic->id ?? ''
             ], [
@@ -62,11 +63,19 @@ class BasicControlController extends Controller
 
             $env = [
                 'APP_TIMEZONE' => $response->time_zone,
-                'APP_DEBUG' => $response->error_log == 0 ? 'true' : 'false'
+                'APP_DEBUG' => $response->error_log == 1 ? 'true' : 'false'
             ];
 
+            $newTitle = trim((string) $request->site_title);
+            $renamed = 0;
+            if ($request->boolean('rename_everywhere') && $oldTitle !== '' && $oldTitle !== $newTitle) {
+                $renamed = $this->renameSiteEverywhere($oldTitle, $newTitle);
+                $env['MAIL_FROM_NAME'] = '"' . str_replace('"', '', $newTitle) . '"';
+            }
+
             BasicService::setEnv($env);
-            session()->flash('success', 'Basic control has been successfully configured');
+            session()->flash('success', 'Basic control has been successfully configured'
+                . ($renamed ? " The name was also updated in {$renamed} page texts." : ''));
             Artisan::call('optimize:clear');
             return back();
         } catch (\Exception $e) {
@@ -236,6 +245,10 @@ class BasicControlController extends Controller
             if (!$response)
                 throw new Exception('Something went wrong, when updating the data.');
 
+            BasicService::setEnv([
+                'APP_DEBUG' => $response->error_log == 1 ? 'true' : 'false'
+            ]);
+
             session()->flash('success', 'Basic control has been successfully configured.');
             Artisan::call('optimize:clear');
             return back();
@@ -328,6 +341,32 @@ class BasicControlController extends Controller
             return response()->json(['success' => false, 'message' => 'An error occurred while updating the module.'], 500);
         }
     }
+
+    /**
+     * Replace the old site name with the new one in page texts, page builder content, SEO fields,
+     * notification templates and the installable-app name. Returns how many rows changed.
+     */
+    protected function renameSiteEverywhere(string $old, string $new): int
+    {
+        $count = 0;
+        // JSON columns: replace the JSON-escaped form so quotes/backslashes in a name can't break the JSON.
+        $jsonOld = substr(json_encode($old, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1, -1);
+        $jsonNew = substr(json_encode($new, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1, -1);
+        $count += \DB::update('UPDATE content_details SET description = REPLACE(description, ?, ?) WHERE description LIKE ?', [$jsonOld, $jsonNew, '%' . $jsonOld . '%']);
+
+        foreach (['page_details' => ['content', 'name'], 'pages' => ['page_title', 'meta_title', 'meta_keywords', 'meta_description', 'og_description'],
+                  'notification_templates' => ['subject', 'email', 'sms', 'in_app', 'push', 'email_from']] as $table => $columns) {
+            foreach ($columns as $col) {
+                $count += \DB::update("UPDATE `{$table}` SET `{$col}` = REPLACE(`{$col}`, ?, ?) WHERE `{$col}` LIKE ?", [$old, $new, '%' . $old . '%']);
+            }
+        }
+
+        // Installable app (PWA) name
+        if (config('laravelpwa.manifest.name') === $old || config('laravelpwa.name') === $old) {
+            config(['laravelpwa.name' => $new, 'laravelpwa.manifest.name' => $new]);
+            @file_put_contents(base_path('config/laravelpwa.php'), '<?php return ' . var_export(config('laravelpwa'), true) . ';');
+        }
+        \Cache::flush();
+        return $count;
+    }
 }
-
-

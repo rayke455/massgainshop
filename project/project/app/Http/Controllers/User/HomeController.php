@@ -146,7 +146,8 @@ class HomeController extends Controller
 
             return view(template() . 'user.dashboard', $data, compact('transactions', 'currency'));
         } catch (\Exception $exception) {
-            return back()->with('error', 'Something went wrong.');
+            report($exception);
+            return response()->view('errors.dashboard-unavailable', [], 503);
         }
     }
 
@@ -293,10 +294,10 @@ class HomeController extends Controller
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->orderBy('id', 'desc')
@@ -318,10 +319,10 @@ class HomeController extends Controller
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->orderBy('id', 'desc')->paginate(15);
@@ -334,9 +335,14 @@ class HomeController extends Controller
         if (!$currency) {
             return response(['success' => false, 'message' => 'Unknown currency'], 422);
         }
-        $this->user->update([
-            'currency' => $currency->code
-        ]);
+        if ($request->boolean('automatic')) {
+            // An automatic lookup finishing late must not replace a manual choice.
+            \App\Models\User::whereKey($this->user->id)
+                ->where(fn ($query) => $query->whereNull('currency')->orWhere('currency', ''))
+                ->update(['currency' => $currency->code]);
+        } else {
+            $this->user->update(['currency' => $currency->code]);
+        }
 
         return response([
             'success' => true

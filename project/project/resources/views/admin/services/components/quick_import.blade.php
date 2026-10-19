@@ -4,7 +4,7 @@
         'Followers' => 'bi-people', 'Likes' => 'bi-heart', 'Views' => 'bi-eye', 'Comments' => 'bi-chat-dots',
         'Shares' => 'bi-share', 'Subscribers' => 'bi-person-plus', 'Members' => 'bi-people-fill', 'Reactions' => 'bi-emoji-smile',
         'Story Views' => 'bi-circle', 'Live Stream' => 'bi-broadcast', 'Saves' => 'bi-bookmark', 'Votes' => 'bi-check2-square',
-        'Traffic' => 'bi-globe2', 'Other' => 'bi-three-dots',
+        'Traffic' => 'bi-globe2', 'Auto Engagement' => 'bi-arrow-repeat', 'Other' => 'bi-three-dots',
     ];
     $zqDefaultPlatforms = array_slice(array_keys(array_diff_key($smartMatrix, ['Other' => 1])), 0, 3);
 @endphp

@@ -107,7 +107,9 @@
              alt="{{ basicControl()->site_title }} cookies">
         <h4 class="mt-2">@lang(basicControl()->cookie_title)</h4>
         <span class="d-block mt-2">@lang(basicControl()->cookie_sub_title).
+            @unless(app()->bound('rental.panel'))
             <a href="{{ basicControl()->cookie_url }}" class="link">@lang("see more")</a>
+            @endunless
         </span>
         <a href="javascript:void(0);" class="mt-3 cmn-btn justify-content-center cookie-accept-btn" type="button"
            onclick="acceptCookiePolicy()">@lang('Accept')</a>

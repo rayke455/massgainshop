@@ -125,10 +125,10 @@ trait KycVerification
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->orderBy('id', 'desc')

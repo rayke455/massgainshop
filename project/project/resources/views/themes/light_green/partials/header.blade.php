@@ -1,6 +1,7 @@
 @php
     $currencyRes = request()->cookie('currency');
     $currencyCookie = json_decode($currencyRes);
+    $zkPanel = \App\Services\PanelRentals::current();   // a rented panel's own domain
 @endphp
 <nav class="navbar fixed-top navbar-expand-lg zk-nav">
     <div class="container">
@@ -18,7 +19,16 @@
                         class="fa-light fa-xmark"></i></button>
             </div>
             <div class="offcanvas-body align-items-center justify-content-between">
-                {!! renderHeaderMenu(getHeaderMenuData()) !!}
+                @if($zkPanel)
+                    <ul class="navbar-nav">
+                        <li class="nav-item"><a class="nav-link" href="{{ url('/') }}">@lang('Services & prices')</a></li>
+                        @if($zkPanel->whatsapp)
+                            <li class="nav-item"><a class="nav-link" href="https://wa.me/{{ $zkPanel->whatsapp }}" target="_blank" rel="noopener">@lang('Contact us')</a></li>
+                        @endif
+                    </ul>
+                @else
+                    {!! renderHeaderMenu(getHeaderMenuData()) !!}
+                @endif
                 <div class="d-flex d-lg-none flex-wrap gap-2 mt-4 zk-mobile-prefs">
                     @include(template().'partials.lang_picker', ['zkLangClass' => 'zk-currency', 'zkLangChevron' => true])
                     @if(count($currencies) > 1)
@@ -98,7 +108,9 @@
                             <li><a class="dropdown-item" href="{{ route('user.order.create') }}"><i class="fa-regular fa-cart-shopping"></i> @lang('Buy services')</a></li>
                             <li><a class="dropdown-item" href="{{ route('user.add.fund') }}"><i class="fa-regular fa-wallet"></i> @lang('Add funds')</a></li>
                             <li><a class="dropdown-item" href="{{ route('user.order.index') }}"><i class="fa-regular fa-list-check"></i> @lang('My orders')</a></li>
+                            @unless($zkPanel)
                             <li><a class="dropdown-item" href="{{ route('user.ticket.list') }}"><i class="fa-regular fa-headset"></i> @lang('Support')</a></li>
+                            @endunless
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form action="{{ route('logout') }}" method="POST" class="m-0">

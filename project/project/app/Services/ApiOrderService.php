@@ -7,22 +7,43 @@ use Illuminate\Support\Facades\Http;
 
 class ApiOrderService
 {
+    /**
+     * Send an order to the provider. Tries the service's backup provider if the main one refuses.
+     * @return bool|null  true = accepted, false = refused by every provider, null = manual service (no provider)
+     */
     public static function placeOrder($service, $order, $data)
     {
-        if (!isset($service->api_provider_id)) {
-            return false;
+        if (empty($service->api_provider_id)) {
+            return null;
         }
 
-        $apiProvider = ApiProvider::find($service->api_provider_id);
+        if (self::sendTo((int) $service->api_provider_id, $service->api_service_id, $service, $order, $data)) {
+            return true;
+        }
+
+        if (!empty($service->backup_api_provider_id) && !empty($service->backup_api_service_id)) {
+            $firstError = $order->status_description;
+            if (self::sendTo((int) $service->backup_api_provider_id, $service->backup_api_service_id, $service, $order, $data)) {
+                return true;
+            }
+            $order->update(['status_description' => $firstError . ' | backup: ' . $order->status_description]);
+        }
+        return false;
+    }
+
+    private static function sendTo(int $providerId, $providerServiceId, $service, $order, $data): bool
+    {
+        $apiProvider = ApiProvider::where('status', 1)->find($providerId);
 
         if (!$apiProvider || empty($apiProvider->url)) {
+            $order->update(['status_description' => 'error: provider not available']);
             return false;
         }
 
         $postData = [
             'key' => $apiProvider->api_key,
             'action' => 'add',
-            'service' => $service->api_service_id,
+            'service' => $providerServiceId,
         ];
 
         switch ($service->service_type) {
@@ -221,12 +242,13 @@ class ApiOrderService
         }
 
         try {
-            $response = Http::asForm()->post($apiProvider->url, $postData);
+            $response = Http::asForm()->timeout(60)->post($apiProvider->url, $postData);
             $apiData = $response->json();
 
             if (isset($apiData['order'])) {
                 $order->update([
                     'api_order_id' => $apiData['order'],
+                    'api_provider_id' => $apiProvider->id,
                     'status_description' => "order: {$apiData['order']}",
                 ]);
                 return true;
@@ -248,8 +270,8 @@ class ApiOrderService
 
     public static function placeOrderThroughApi($service, $order, array $data = [])
     {
-        if (!isset($service->api_provider_id)) {
-            return ['status' => 'error', 'order' => null, 'error' => 'Service has no api_provider configured', 'raw' => null];
+        if (!isset($service->api_provider_id) || empty($service->api_provider_id)) {
+            return ['status' => 'success', 'order' => $order->id ?? null, 'error' => null, 'raw' => null];
         }
 
         $apiProvider = ApiProvider::find($service->api_provider_id);
@@ -464,7 +486,7 @@ class ApiOrderService
             $apiData = $response->json();
 
             if (isset($apiData['order'])) {
-                $order->update(['api_order_id' => $apiData['order'], 'status_description' => "order: {$apiData['order']}"]);
+                $order->update(['api_order_id' => $apiData['order'], 'api_provider_id' => $apiProvider->id, 'status_description' => "order: {$apiData['order']}"]);
                 return ['status' => 'success', 'order' => $apiData['order'], 'error' => null, 'raw' => $apiData];
             }
 
@@ -537,12 +559,12 @@ class ApiOrderService
                 break;
 
             case 'Mentions Custom List':
-                $postData['link'] = $data['link'] ?? null;
-                $postData['quantity'] = $data['quantity'] ?? 0;
-                $postData['usernames'] = $data['usernames'];
+                $postData['link'] = $order->link ?? null;
+                $postData['quantity'] = $order->quantity ?? 0;
+                $postData['usernames'] = optional($order->order_type_info)->usernames;
                 $newOrder->update([
                     'order_type_info' => [
-                        'usernames' => $data['usernames'],
+                        'usernames' => optional($order->order_type_info)->usernames,
                     ],
                 ]);
                 break;
@@ -684,10 +706,10 @@ class ApiOrderService
                 break;
         }
 
-        if (isset($data['runs'])) {
+        if (!empty($order->runs)) {
             $postData['runs'] = $order->runs;
         }
-        if (isset($data['interval'])) {
+        if (!empty($order->interval)) {
             $postData['interval'] = $order->interval;
         }
 
@@ -698,6 +720,7 @@ class ApiOrderService
             if (isset($apiData['order'])) {
                 $newOrder->update([
                     'api_order_id' => $apiData['order'],
+                    'api_provider_id' => $apiProvider->id,
                     'status_description' => "order: {$apiData['order']}",
                 ]);
                 return true;

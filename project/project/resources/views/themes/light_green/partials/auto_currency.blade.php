@@ -12,7 +12,6 @@
     <script>
         "use strict";
         (function () {
-            try { if (sessionStorage.getItem('zkCurAuto')) return; sessionStorage.setItem('zkCurAuto', '1'); } catch (e) { return; }
             const map = @json(config('country_currency'));
             const active = @json($zkActiveCodes);
             const base = @json(basicControl()->base_currency);
@@ -20,6 +19,8 @@
             const guestUrl = @json(route('set.currency'));
             const userUrl = @json(auth()->check() ? route('user.selected.currency') : null);
             const token = @json(csrf_token());
+            const attemptKey = @json(auth()->check() ? 'zkCurAuto:user:'.auth()->id() : 'zkCurAuto:guest');
+            try { if (sessionStorage.getItem(attemptKey)) return; } catch (e) {}
 
             (window.zkCountry ? window.zkCountry() : Promise.resolve('')).then(function (country) {
                 const code = map[country];
@@ -27,13 +28,17 @@
                 if (!loggedIn && code === base) return; // already showing base prices
 
                 const req = loggedIn
-                    ? fetch(userUrl + '?currency=' + encodeURIComponent(code), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                    ? fetch(userUrl + '?automatic=1&currency=' + encodeURIComponent(code), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
                     : fetch(guestUrl, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
-                        body: '_token=' + encodeURIComponent(token) + '&currency=' + encodeURIComponent(code),
+                        body: '_token=' + encodeURIComponent(token) + '&automatic=1&currency=' + encodeURIComponent(code),
                     });
-                req.then(r => { if (r.ok) location.reload(); }).catch(() => {});
+                req.then(r => r.ok ? r.json() : null).then(result => {
+                    if (!result || !result.success) return;
+                    try { sessionStorage.setItem(attemptKey, '1'); } catch (e) {}
+                    location.reload();
+                }).catch(() => {});
             });
         })();
     </script>

@@ -136,6 +136,7 @@ class OrderController extends Controller
                 return '<span class="' . $statusClass . '">' . '#' . $item->id . '<span> ' . $iconTooltip . '</span></span>';
             })
             ->addColumn('user', function ($item) {
+                if (!$item->users) return '<span class="badge bg-soft-info text-info">Guest checkout</span>';
                 $url = route('admin.user.view.profile', optional($item->users)->id);
                 return '<a class="d-flex align-items-center" href="' . $url . '">
                                 <div class="flex-shrink-0">
@@ -308,7 +309,7 @@ class OrderController extends Controller
                 'completed_at' => now() ?? null
             ]);
 
-            if (($order->status == 'partial' || $order->status == 'refunded') && ($order->remains != 0 || $order->remains == null)) {
+            if ($order->users && ($order->status == 'partial' || $order->status == 'refunded') && ($order->remains != 0 || $order->remains == null)) {
 
                 $perOrder = $order->price / $order->quantity;
                 $remains = $order->remains ?? 1;
@@ -317,6 +318,7 @@ class OrderController extends Controller
                 if ($order->users) {
                     $order->users->balance += $getBackAmount;
                     $order->users->save();
+                    \App\Services\PanelRentals::clawBack($order, (float) $getBackAmount);   // reseller profit on refunded part
                 }
 
                 Transaction::create([
@@ -353,6 +355,7 @@ class OrderController extends Controller
                     if ($order->users) {
                         $order->users->balance += $getBackAmount;
                         $order->users->save();
+                        \App\Services\PanelRentals::clawBack($order, (float) $getBackAmount);
                     }
                 }
 
@@ -380,7 +383,7 @@ class OrderController extends Controller
                 'completed_at' => $request->status == 'completed' ? now() : null
             ]);
 
-            if (($order->status == 'partial' || $order->status == 'refunded') && ($order->remains != 0 || $order->remains == null)) {
+            if ($order->users && ($order->status == 'partial' || $order->status == 'refunded') && ($order->remains != 0 || $order->remains == null)) {
 
                 $perOrder = $order->price / $order->quantity;
                 $getBackAmount = $order->remains > 0 ? $order->remains * $perOrder : $order->price;
@@ -388,6 +391,7 @@ class OrderController extends Controller
                 if ($order->users) {
                     $order->users->balance += $getBackAmount;
                     $order->users->save();
+                    \App\Services\PanelRentals::clawBack($order, (float) $getBackAmount);   // reseller profit on refunded part
                 }
 
                 Transaction::create([
@@ -429,6 +433,7 @@ class OrderController extends Controller
             $order = Order::with('users')->findOrFail($id);
             $service = Service::userRate()->findOrFail($order->service_id);
             $user = $order->users;
+            if (!$user) return $this->error('Guest order: reconcile with the supplier before any manual resend. No customer wallet is available.');
 
             $quantity = $order->quantity ?? $order->quantity;
             if ($service->drip_feed && empty($order->drip_feed)) {

@@ -47,7 +47,7 @@ class UpdateRefillStatus extends Command
 
         foreach ($orders as $order) {
             $service = $order->service;
-            $provider = $service?->provider;
+            $provider = $order->effectiveProvider();
 
             if (!$provider || !$provider->url || !$provider->api_key) {
                 continue;

@@ -58,7 +58,7 @@
 <script>
 
     function showPwa() {
-        $("#pwaInstallPopup").show(); // Show your modal
+        (window.jQuery ? jQuery("#pwaInstallPopup").show() : document.getElementById("pwaInstallPopup")?.style.setProperty("display", "block")); // Show your modal
     }
 
 
@@ -67,8 +67,7 @@
     const closeButton = document.querySelector('.close-btn');
 
     document.querySelector('.carousel_close_btn').addEventListener('click', () => {
-        var $modal = $("#pwaInstallPopup");
-        $modal.hide();
+        document.getElementById("pwaInstallPopup").style.display = "none";
 
         localStorage.setItem('pwa_install', 'not_install');
     })
@@ -133,7 +132,7 @@
                 if (!installButton) return; // install popup not on this page
                 let pwaStatus = localStorage.getItem('pwa_install');
                 if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
-                    $("#pwaInstallPopup").show(); // Show your modal
+                    (window.jQuery ? jQuery("#pwaInstallPopup").show() : document.getElementById("pwaInstallPopup")?.style.setProperty("display", "block")); // Show your modal
                 }
 
                 installButton.addEventListener('click', async () => {
@@ -152,7 +151,7 @@
             if (!installButton) return; // install popup not on this page
             let pwaStatus = localStorage.getItem('pwa_install');
             if (pwaStatus !== 'not_install' && pwaStatus !== 'install') {
-                $("#pwaInstallPopup").show(); // Show your modal with Firefox-specific instructions
+                (window.jQuery ? jQuery("#pwaInstallPopup").show() : document.getElementById("pwaInstallPopup")?.style.setProperty("display", "block")); // Show your modal with Firefox-specific instructions
             }
 
             installButton.addEventListener('click', () => {

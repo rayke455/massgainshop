@@ -39,6 +39,10 @@ use App\Http\Controllers\MpesaController;
 */
 
 $basicControl = basicControl();
+// Custom rental hosts are dispatched by ResolveRentalHost after CSRF checks.
+// On the main host these paths deliberately have no public action.
+Route::post('/panel-order', fn () => abort(404));
+Route::get('/track/{token}', fn () => abort(404));
 
 Route::get('maintenance-mode', function () {
     if (!basicControl()->is_maintenance_mode) {
@@ -52,8 +56,14 @@ Route::get('maintenance-mode', function () {
 // Safaricom payment callbacks: must work on whatever public address Safaricom was given (tunnel, www/non-www),
 // so this sits outside the single-domain CheckModuleIsEnable group. Payments are re-verified before crediting.
 Route::post('mpesa/webhook', [MpesaController::class, 'webhook'])->name('mpesa.webhook');
+Route::post('rentals/payout-result', [\App\Http\Controllers\PanelRentalController::class, 'payoutResult'])->middleware('throttle:60,1')->name('rentals.payout.result');
+Route::post('snippe/webhook', [\App\Http\Controllers\SnippeController::class, 'webhook'])->middleware('throttle:120,1')->name('snippe.webhook');
 
 Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModuleIsEnable']], function () use ($basicControl) {
+    Route::get('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'index'])->name('guest.order');
+    Route::post('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'store'])->middleware('throttle:3,1')->block(40,40)->name('guest.store');
+    Route::get('/guest-orders/{token}', [\App\Http\Controllers\GuestOrderController::class, 'track'])->whereUuid('token')->name('guest.track');
+    Route::get('/guest-orders/{token}/status', [\App\Http\Controllers\GuestOrderController::class, 'status'])->whereUuid('token')->middleware('throttle:10,1')->name('guest.status');
 
     Route::get('language/{locale}', function ($locale) {
         app()->setLocale($locale);
@@ -129,6 +139,10 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
                 Route::get('order/create', [OrderController::class, 'create'])->name('order.create');
                 Route::post('order/store', [OrderController::class, 'store'])->name('order.store');
                 Route::get('get-category-service', [OrderController::class, 'getCategoryService'])->name('get.category.service');
+                Route::post('favorite/{service}', [\App\Http\Controllers\User\GrowthController::class, 'toggleFavorite'])->middleware('throttle:60,1')->name('favorite.toggle');
+                Route::post('order/{order}/cancel', [\App\Http\Controllers\User\GrowthController::class, 'cancelOrder'])->middleware('throttle:10,1')->name('order.cancel');
+                Route::post('order/{order}/review', [\App\Http\Controllers\User\GrowthController::class, 'storeReview'])->middleware('throttle:10,1')->name('order.review');
+                Route::post('free-trial', [\App\Http\Controllers\User\GrowthController::class, 'claimTrial'])->middleware('throttle:5,1')->name('free.trial');
                 Route::get('order/refill/{status?}', [OrderController::class, 'showOrderRefill'])->name('show.order.refill');
                 Route::put('order/refill/{id}', [OrderController::class, 'orderRefill'])->name('order.refill');
                 Route::get('order/drip-feed/{status?}', [OrderController::class, 'showDripFeed'])->name('show.drip.feed');
@@ -169,6 +183,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
         Route::get('supported-currency', [DepositController::class, 'supportedCurrency'])->name('supported.currency');
         Route::post('payment-request', [DepositController::class, 'paymentRequest'])->name('payment.request');
         Route::get('deposit-check-amount', [DepositController::class, 'checkAmount'])->name('deposit.checkAmount');
+        Route::get('deposit-bonus-preview', [DepositController::class, 'bonusPreview'])->middleware('throttle:60,1')->name('deposit.bonusPreview');
     });
 
 
@@ -177,6 +192,9 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::match(['get', 'post'], 'payment/{code}/{trx?}/{type?}', [PaymentController::class, 'gatewayIpn'])->name('ipn');
 
     Route::get('services', [ServiceController::class, 'services'])->name('services');
+    Route::get('buy', [\App\Http\Controllers\Frontend\LandingController::class, 'index'])->name('landing.index');
+    Route::get('buy/{slug}/{country?}', [\App\Http\Controllers\Frontend\LandingController::class, 'show'])->where(['slug' => '[a-z0-9-]+', 'country' => '[a-z-]+'])->name('landing.show');
+    Route::get('sitemap.xml', [\App\Http\Controllers\Frontend\LandingController::class, 'sitemap'])->name('sitemap');
     Route::get('captcha', [ManualRecaptchaController::class, 'reCaptCha'])->name('captcha');
 
     Route::get('blog/{slug}', [BlogController::class, 'blogDetails'])->name('blog.details');
@@ -206,7 +224,28 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
 
     Route::post('mpesa/stkPush/{trx_id}', [MpesaController::class, 'stkPush'])->name('mpesa.stkPush');
     Route::get('mpesa/status/{trx_id}', [MpesaController::class, 'status'])->middleware('auth')->name('mpesa.status');
+    Route::post('snippe/pay/{trx_id}', [\App\Http\Controllers\SnippeController::class, 'pay'])->middleware(['auth', 'throttle:10,1'])->name('snippe.pay');
+    Route::get('snippe/status/{trx_id}', [\App\Http\Controllers\SnippeController::class, 'status'])->middleware(['auth', 'throttle:40,1'])->name('snippe.status');
 
+
+    Route::middleware(['auth', 'userCheck'])->prefix('user/panels')->name('user.panels.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PanelRentalController::class, 'index'])->name('index');
+        Route::get('/preview', [\App\Http\Controllers\PanelRentalController::class, 'preview'])->middleware('throttle:60,1')->name('preview');
+        Route::post('/payout-destination', [\App\Http\Controllers\PanelRentalController::class, 'savePayoutDestination'])->middleware('throttle:5,1')->name('destination');
+        Route::post('/withdraw', [\App\Http\Controllers\PanelRentalController::class, 'withdraw'])->middleware('throttle:5,1')->block(10, 10)->name('withdraw');
+        Route::post('/earnings-to-wallet', [\App\Http\Controllers\PanelRentalController::class, 'earningsToWallet'])->middleware('throttle:10,1')->name('towallet');
+        Route::post('/{id}/prices', [\App\Http\Controllers\PanelRentalController::class, 'prices'])->whereNumber('id')->middleware('throttle:20,1')->name('prices');
+        Route::post('/', [\App\Http\Controllers\PanelRentalController::class, 'store'])->middleware('throttle:5,1')->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\PanelRentalController::class, 'show'])->whereNumber('id')->name('show');
+        Route::post('/{id}/settings', [\App\Http\Controllers\PanelRentalController::class, 'update'])->whereNumber('id')->name('update');
+        Route::post('/{id}/verify', [\App\Http\Controllers\PanelRentalController::class, 'verify'])->middleware('throttle:3,1')->name('verify');
+        Route::post('/{id}/renew', [\App\Http\Controllers\PanelRentalController::class, 'renew'])->middleware('throttle:2,1')->block(10, 10)->name('renew');
+        Route::post('/{id}/requests/{requestId}', [\App\Http\Controllers\PanelRentalController::class, 'linkOrder'])->name('link');
+    });
+    Route::get('/panels/{slug}', [\App\Http\Controllers\RentalStorefrontController::class, 'show'])->name('panels.show');
+    Route::post('/panels/{slug}/panel-order', [\App\Http\Controllers\RentalStorefrontController::class, 'order'])->middleware('throttle:5,1')->name('panels.order');
+    Route::get('/panels/{slug}/track/{token}', [\App\Http\Controllers\RentalStorefrontController::class, 'track'])->middleware('throttle:30,1')->name('panels.track');
+    Route::get('/panels/{slug}/pay-status/{token}', [\App\Http\Controllers\RentalStorefrontController::class, 'payStatus'])->middleware('throttle:40,1')->name('panels.paystatus');
 
     Auth::routes();
 

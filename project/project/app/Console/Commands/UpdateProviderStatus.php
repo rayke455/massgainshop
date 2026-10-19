@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Http;
  */
 class UpdateProviderStatus extends Command
 {
+    use \App\Traits\Notify;
+
     protected $signature = 'update-provider:status';
 
     protected $description = 'Update order status from API providers and refund canceled/partial orders';
@@ -31,10 +33,11 @@ class UpdateProviderStatus extends Command
             ->whereNotIn('status', self::FINAL)
             ->whereNotNull('api_order_id')
             ->whereHas('service', fn($q) => $q->whereNotNull('api_provider_id')->where('api_provider_id', '!=', 0))
-            ->get(['id', 'service_id', 'api_order_id', 'status']);
+            ->get(['id', 'service_id', 'api_order_id', 'api_provider_id', 'status']);
 
         $checked = 0;
-        foreach ($orders->groupBy(fn($o) => $o->service->api_provider_id) as $providerId => $group) {
+        // The provider that actually took the order (may be the backup provider), else the service's provider.
+        foreach ($orders->groupBy(fn($o) => $o->api_provider_id ?: $o->service->api_provider_id) as $providerId => $group) {
             $provider = ApiProvider::find($providerId);
             if (!$provider || !$provider->url || !$provider->api_key) {
                 continue;
@@ -93,19 +96,19 @@ class UpdateProviderStatus extends Command
 
     private function apply(int $orderId, array $data): void
     {
-        DB::transaction(function () use ($orderId, $data) {
+        $completed = DB::transaction(function () use ($orderId, $data) {
             $order = Order::lockForUpdate()->find($orderId);
             if (!$order || in_array($order->status, self::FINAL, true)) {
-                return; // already finished (and refunded if needed) by another run
+                return false; // already finished (and refunded if needed) by another run
             }
 
             if (isset($data['error'])) {
                 $order->status_description = 'error: {' . $data['error'] . '}';
                 $order->save();
-                return;
+                return false;
             }
             if (!isset($data['status'])) {
-                return;
+                return false;
             }
 
             $status = strtolower(trim($data['status']));
@@ -137,6 +140,7 @@ class UpdateProviderStatus extends Command
             };
 
             if ($refund > 0 && $order->user_id) {
+                \App\Services\PanelRentals::clawBack($order, (float) $refund);   // panel customer order: reverse reseller profit share
                 $user = User::lockForUpdate()->find($order->user_id);
                 if ($user) {
                     $user->balance += $refund;
@@ -153,6 +157,31 @@ class UpdateProviderStatus extends Command
                     $trx->save();
                 }
             }
+            return $status === 'completed' ? $order : false;
         });
+
+        if ($completed && \App\Services\Growth::get('notify.order_completed', true)) {
+            $this->notifyCompleted($completed);
+        }
+    }
+
+    /** "Your order is complete" to the customer (dashboard bell + email/SMS as set in the template). */
+    private function notifyCompleted(Order $order): void
+    {
+        try {
+            $user = User::find($order->user_id);
+            if (!$user) {
+                return;
+            }
+            $params = [
+                'order_id' => $order->id,
+                'service' => \Illuminate\Support\Str::limit(optional($order->service)->service_title ?? 'service', 80),
+                'quantity' => number_format((int) $order->quantity),
+            ];
+            $this->userPushNotification($user, 'ORDER_COMPLETED', $params, ['link' => route('user.order.index'), 'icon' => 'fa-light fa-circle-check']);
+            $this->sendMailSms($user, 'ORDER_COMPLETED', $params);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

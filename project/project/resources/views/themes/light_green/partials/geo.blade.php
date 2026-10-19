@@ -9,8 +9,8 @@
         if (window.zkCountry) return;
         let pending = null;
         const server = @json($zkCfCountry);
-        const read = () => { try { return localStorage.getItem('zkCountry') || ''; } catch (e) { return ''; } };
-        const save = c => { try { localStorage.setItem('zkCountry', c); } catch (e) {} };
+        const read = () => { try { return Date.now() - Number(localStorage.getItem('zkCountryAt') || 0) < 86400000 ? localStorage.getItem('zkCountry') || '' : ''; } catch (e) { return ''; } };
+        const save = c => { try { localStorage.setItem('zkCountry', c); localStorage.setItem('zkCountryAt', String(Date.now())); } catch (e) {} };
 
         /** Resolves to a 2-letter country code, or '' if unknown. Behind Cloudflare it's instant. */
         window.zkCountry = function () {

@@ -44,13 +44,21 @@ class InAppNotificationController extends Controller
 
     public function readAt($id)
     {
-        $siteNotification = InAppNotification::find($id);
+        $query = InAppNotification::where('id', $id);
+        if (Auth::guard('admin')->check()) {
+            $query->where('in_app_notificationable_type', Admin::class)
+                ->where('in_app_notificationable_id', Auth::id());
+        } else {
+            $query->where('in_app_notificationable_type', User::class)
+                ->where('in_app_notificationable_id', Auth::id());
+        }
+
+        $siteNotification = $query->first();
         if ($siteNotification) {
             $siteNotification->delete();
             if (Auth::guard('admin')->check()) {
                 event(new UpdateAdminNotification(Auth::id()));
-            }
-            else {
+            } else {
                 event(new UpdateUserNotification(Auth::id()));
             }
             $data['status'] = true;

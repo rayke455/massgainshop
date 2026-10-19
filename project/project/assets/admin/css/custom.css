@@ -98,7 +98,119 @@
 }
 
 .dashboard-height {
-    height: 25rem;
+    min-height: 25rem;
+}
+
+/* Zirka admin dashboard polish */
+:root {
+    --zk-admin-primary: #5b4cf0;
+    --zk-admin-ink: #172033;
+    --zk-admin-muted: #6b7489;
+    --zk-admin-line: #e8eaf2;
+    --zk-admin-soft: #f6f7fb;
+}
+
+.main .content.container-fluid {
+    padding-top: 26px;
+    padding-bottom: 44px;
+}
+
+.zk-admin-intro {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    overflow: hidden;
+    padding: 30px 34px;
+    border: 1px solid rgba(91, 76, 240, .14);
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 92% 15%, rgba(124, 58, 237, .16), transparent 30%),
+        linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+    box-shadow: 0 18px 45px -28px rgba(55, 44, 140, .35);
+}
+
+.zk-admin-intro::after {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    right: -42px;
+    bottom: -92px;
+    border: 24px solid rgba(91, 76, 240, .08);
+    border-radius: 50%;
+}
+
+.zk-admin-intro__copy,
+.zk-admin-intro__actions { position: relative; z-index: 1; }
+.zk-admin-intro__copy { min-width: 0; }
+.zk-admin-intro__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 10px;
+    color: var(--zk-admin-primary);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.zk-admin-intro h1 {
+    margin: 0 0 8px;
+    color: var(--zk-admin-ink);
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 800;
+    letter-spacing: -.035em;
+}
+.zk-admin-intro p {
+    max-width: 640px;
+    margin: 0;
+    color: var(--zk-admin-muted);
+    font-size: 14px;
+}
+.zk-admin-intro__dot {
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    margin: 0 9px 3px;
+    border-radius: 50%;
+    background: #b9bfd0;
+}
+.zk-admin-intro__actions { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 10px; min-width: 330px; }
+.zk-admin-action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid var(--zk-admin-line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .84);
+    color: var(--zk-admin-ink);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.zk-admin-action > i:first-child { color: var(--zk-admin-primary); font-size: 17px; }
+.zk-admin-action > i:last-child { color: #a0a7b8; font-size: 14px; }
+.zk-admin-action:hover { transform: translateY(-2px); border-color: rgba(91, 76, 240, .35); box-shadow: 0 10px 22px -16px rgba(55, 44, 140, .5); color: var(--zk-admin-primary); }
+.zk-admin-action--primary { border-color: transparent; background: var(--zk-admin-primary); color: #fff; box-shadow: 0 12px 24px -14px var(--zk-admin-primary); }
+.zk-admin-action--primary > i:first-child, .zk-admin-action--primary > i:last-child { color: #fff; }
+.zk-admin-action--primary:hover { color: #fff; background: #4d3de0; }
+
+.main .card { border-color: var(--zk-admin-line); border-radius: 16px; box-shadow: 0 8px 24px -18px rgba(15, 23, 42, .28); }
+.main .card-header { padding: 18px 22px; border-bottom-color: var(--zk-admin-line); }
+.main .card-header-title { color: var(--zk-admin-ink); font-weight: 800; }
+.main .table > :not(caption) > * > * { padding: 15px 18px; }
+.main .table thead th { color: var(--zk-admin-muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+@media (max-width: 767.98px) {
+    .main .content.container-fluid { padding: 18px 14px 34px; }
+    .zk-admin-intro { align-items: stretch; flex-direction: column; padding: 24px 20px; border-radius: 18px; }
+    .zk-admin-intro__dot { display: none; }
+    .zk-admin-intro__actions { min-width: 0; grid-template-columns: 1fr; }
 }
 
 .display-none {
@@ -1593,3 +1705,7 @@
     margin-left: 2px;
     margin-right: 2px;
 }
+
+/* Wide brand logo (Mass Fame Shop): let it use the sidebar width instead of the template's 6.5rem cap */
+.navbar-vertical .navbar-brand-logo, .navbar .navbar-brand-logo { min-width: 0; max-width: 13.5rem; width: auto; height: 2.1rem; object-fit: contain; }
+.navbar-brand-logo-mini { width: 2rem; height: 2rem; object-fit: contain; }

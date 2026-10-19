@@ -18,6 +18,7 @@ class Order extends Model
         'category_id',
         'service_id',
         'api_order_id',
+        'api_provider_id',
         'api_refill_id',
         'link',
         'quantity',
@@ -80,6 +81,14 @@ class Order extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** The provider that actually took this order (could be the backup provider), else the service's provider. */
+    public function effectiveProvider()
+    {
+        return $this->api_provider_id
+            ? ApiProvider::find($this->api_provider_id)
+            : optional($this->service)->provider;
     }
 
     public function service()

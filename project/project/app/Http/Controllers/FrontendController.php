@@ -25,6 +25,8 @@ class FrontendController extends Controller
     public function page($slug = '/')
     {
         try {
+            // Laravel passes null for the optional root slug; the homepage is stored as '/'.
+            $slug = $slug ?: '/';
             $connection = DB::connection()->getPdo();
 
             $selectedTheme = getTheme();
@@ -117,8 +119,11 @@ class FrontendController extends Controller
 
     public function setCurrency(Request $request)
     {
-        $currency = Currency::where('code', $request->currency)->first();
-        $cookie = cookie('currency', json_encode($currency));
+        $currency = Currency::where('code', $request->currency)->where('status', 1)->first();
+        if (!$currency) return response()->json(['success' => false], 422);
+        $selection = $currency->toArray();
+        $selection['_source'] = $request->boolean('automatic') ? 'automatic' : 'manual';
+        $cookie = cookie('currency', json_encode($selection), 60 * 24 * 365);
         return response([
             'success' => true
         ])->cookie($cookie);

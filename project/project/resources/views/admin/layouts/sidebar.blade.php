@@ -48,6 +48,10 @@
             <!-- Content -->
             <div class="navbar-vertical-content">
                 <div id="navbarVerticalMenu" class="nav nav-pills nav-vertical card-navbar-nav">
+                    @if(\App\Services\PanelRentals::isSuperAdmin())
+                    <a class="nav-link" href="{{ route('admin.rentals.index') }}"><i class="bi-shop nav-icon"></i><span class="nav-link-title">Panel rentals</span></a>
+                    <a class="nav-link" href="{{ route('admin.guest.orders') }}"><i class="bi-cart nav-icon"></i><span class="nav-link-title">Guest orders</span></a>
+                    @endif
                     <div class="nav-item">
                         <a class="nav-link {{ menuActive(['admin.dashboard']) }}"
                            href="{{ route('admin.dashboard') }}">
@@ -264,8 +268,17 @@
                         </div>
                     </div>
 
-                    <span class="dropdown-header mt-3">@lang('Commission Setting')</span>
+                    <span class="dropdown-header mt-3">@lang('Growth')</span>
                     <small class="bi-three-dots nav-subtitle-replacer"></small>
+                    <div class="nav-item">
+                        <a class="nav-link {{ menuActive(['admin.growth.index']) }}" href="{{ route('admin.growth.index') }}" data-placement="left">
+                            <i class="fa-light fa-rocket-launch nav-icon"></i>
+                            <span class="nav-link-title">@lang("Coupons, VIP & Reviews")
+                                @php $zkPendingReviews = \App\Models\Review::where('status', 0)->count(); @endphp
+                                @if($zkPendingReviews)<span class="badge bg-danger rounded-pill ms-1">{{ $zkPendingReviews }}</span>@endif
+                            </span>
+                        </a>
+                    </div>
                     <div class="nav-item">
                         <a class="nav-link {{ menuActive(['admin.referral-commission.index', 'admin.referral-commission.create', 'admin.referral-commission.edit']) }}"
                            href="{{ route('admin.referral-commission.index') }}" data-placement="left">

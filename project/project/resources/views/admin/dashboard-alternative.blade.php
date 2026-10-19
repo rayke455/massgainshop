@@ -59,6 +59,21 @@
         </div>
         @endif
 
+        <section class="zk-admin-intro mb-4 mb-lg-5" aria-labelledby="admin-dashboard-title">
+            <div class="zk-admin-intro__copy">
+                <span class="zk-admin-intro__eyebrow"><i class="bi-stars"></i> @lang('Workspace overview')</span>
+                <h1 id="admin-dashboard-title">@lang('Good to see you again'), {{ auth()->user()->firstname ?: auth()->user()->username }}.</h1>
+                <p>@lang('Keep an eye on growth, orders and the people powering your community.')<span class="zk-admin-intro__dot"></span>@lang('Here is today’s pulse at a glance.')</p>
+            </div>
+            <div class="zk-admin-intro__actions">
+                <a class="zk-admin-action zk-admin-action--primary" href="{{ route('admin.users', 'all') }}">
+                    <i class="bi-people"></i><span>@lang('Manage users')</span><i class="bi-arrow-up-right ms-auto"></i>
+                </a>
+                <a class="zk-admin-action" href="{{ route('admin.order', 'list') }}">
+                    <i class="bi-cart3"></i><span>@lang('Review orders')</span><i class="bi-arrow-up-right ms-auto"></i>
+                </a>
+            </div>
+        </section>
 
         @include('admin.partials.dashboard.health')
         @include('admin.partials.dashboard.profit')

@@ -86,6 +86,12 @@
             },
 
             mounted() {
+                // "Buy again": ?serviceId=..&link=..&quantity=..
+                try {
+                    const q = new URLSearchParams(location.search);
+                    if (q.get('link')) this.link = q.get('link');
+                    if (q.get('quantity')) setTimeout(() => { this.quantity = parseInt(q.get('quantity'), 10) || this.quantity; }, 2500);
+                } catch (e) {}
                 // Restore link/quantity saved when the customer went to add funds (valid for 2 hours).
                 try {
                     const draft = JSON.parse(sessionStorage.getItem('zk_order_draft') || 'null');
@@ -156,10 +162,10 @@
                     let selectedService = this.services.find(service => service.id == this.selectedService);
                     if (this.currency) {
                         let formattedCurrency = parseFloat(selectedService.price) * parseFloat(this.currency.conversion_rate);
-                        this.pricePer = formattedCurrency.toFixed(2);
+                        this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                     } else {
                         let formattedCurrency = parseFloat(selectedService.price);
-                        this.pricePer = formattedCurrency.toFixed(2);
+                        this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                     }
                     this.minAmount = selectedService.min_amount;
                     this.avgTime = this.formatAverageTime(selectedService.average_time_minutes);
@@ -188,10 +194,10 @@
                         this.serviceName = this.services[0].service_title;
                         if (this.currency) {
                             let formattedCurrency = parseFloat(this.services[0].price) * parseFloat(this.currency.conversion_rate);
-                            this.pricePer = formattedCurrency;
+                            this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                         } else {
                             let formattedCurrency = parseFloat(this.services[0].price);
-                            this.pricePer = formattedCurrency.toFixed(2);
+                            this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                         }
 
                         this.minAmount = this.services[0].min_amount;
@@ -237,10 +243,10 @@
                                 this.serviceName = this.selectedServiceFromOrder.service_title;
                                 if (this.currency) {
                                     let formattedCurrency = parseFloat(this.selectedServiceFromOrder.price) * parseFloat(this.currency.conversion_rate);
-                                    this.pricePer = formattedCurrency;
+                                    this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                                 } else {
                                     let formattedCurrency = parseFloat(this.selectedServiceFromOrder.price);
-                                    this.pricePer = formattedCurrency;
+                                    this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                                 }
                                 this.minAmount = this.selectedServiceFromOrder.min_amount;
                                 this.maxAmount = this.selectedServiceFromOrder.max_amount;
@@ -257,10 +263,10 @@
                                         this.serviceName = this.services[0].service_title;
                                         if (this.currency) {
                                             let formattedCurrency = parseFloat(this.services[0].price) * parseFloat(this.currency.conversion_rate);
-                                            this.pricePer = formattedCurrency.toFixed(2);
+                                            this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                                         } else {
                                             let formattedCurrency = parseFloat(this.services[0].price);
-                                            this.pricePer = formattedCurrency.toFixed(2);
+                                            this.pricePer = parseFloat(formattedCurrency.toFixed(4));
                                         }
                                         this.minAmount = this.services[0].min_amount;
                                         this.maxAmount = this.services[0].max_amount;

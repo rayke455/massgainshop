@@ -2,9 +2,9 @@
 <section class="zk-section zk-section--soft" id="how-it-works">
     <div class="container">
         <div class="zk-head zk-reveal">
-            <span class="zk-eyebrow">@lang(@$how_it_works['single']['title'])</span>
-            <h2 class="zk-title">{!! zkHighlight(__(@$how_it_works['single']['heading'])) !!}</h2>
-            <p class="zk-lead">@lang(strip_tags(@$how_it_works['single']['description']))</p>
+            <span class="zk-eyebrow">@lang('How it works')</span>
+            <h2 class="zk-title">@lang('From signup to') <span class="zk-hl">@lang('your first order.')</span></h2>
+            <p class="zk-lead">@lang('Create your account, add funds, and choose a service. Follow your order from your dashboard.')</p>
         </div>
         <div class="row g-5 align-items-center">
             <div class="col-lg-6 order-2 order-lg-1 zk-reveal">

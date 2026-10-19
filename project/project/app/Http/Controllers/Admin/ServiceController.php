@@ -99,7 +99,12 @@ class ServiceController extends Controller
                 'refill' => $refillData['refill'] ?? 0,
                 'is_refill_automatic' => $refillData['is_refill_automatic'] ?? 0,
                 'description' => $data['description'] ?? null,
-            ] + (($data['manual_api'] ?? 0) == 0 ? ['original_price' => $data['cost'] ?? null] : []));
+            ] + (($data['manual_api'] ?? 0) == 0 ? ['original_price' => $data['cost'] ?? null] : [])
+              + [
+                  // Backup provider only applies to provider services.
+                  'backup_api_provider_id' => ($data['manual_api'] ?? 0) == 1 ? ($data['backup_api_provider_id'] ?? null) : null,
+                  'backup_api_service_id' => ($data['manual_api'] ?? 0) == 1 && !empty($data['backup_api_provider_id']) ? ($data['backup_api_service_id'] ?? null) : null,
+              ]);
 
             throw_if(!$serviceRes, 'Something went wrong, while storing data.Please try again.');
 
@@ -153,7 +158,12 @@ class ServiceController extends Controller
                 'refill' => $refillData['refill'] ?? 0,
                 'is_refill_automatic' => $refillData['is_refill_automatic'] ?? 0,
                 'description' => $data['description'] ?? null,
-            ] + (($data['manual_api'] ?? 0) == 0 ? ['original_price' => $data['cost'] ?? null] : []));
+            ] + (($data['manual_api'] ?? 0) == 0 ? ['original_price' => $data['cost'] ?? null] : [])
+              + [
+                  // Backup provider only applies to provider services.
+                  'backup_api_provider_id' => ($data['manual_api'] ?? 0) == 1 ? ($data['backup_api_provider_id'] ?? null) : null,
+                  'backup_api_service_id' => ($data['manual_api'] ?? 0) == 1 && !empty($data['backup_api_provider_id']) ? ($data['backup_api_service_id'] ?? null) : null,
+              ]);
 
             throw_if(!$serviceRes, 'Something went wrong, while updating data.Please try again.');
 

@@ -13,6 +13,15 @@
                 </div>
             </div>
 
+            <div class="zk-dashboard-guide mb-4">
+                <span class="zk-dashboard-guide__icon"><i class="fa-solid fa-sparkles"></i></span>
+                <div class="zk-dashboard-guide__copy">
+                    <strong>@lang('A faster way to get started')</strong>
+                    <span>@lang('Choose a platform, paste your link and let') {{ basicControl()->site_title }} @lang('handle the delivery.')</span>
+                </div>
+                <a href="{{ route('services') }}" class="zk-dashboard-guide__link">@lang('Browse services') <i class="fa-regular fa-arrow-right"></i></a>
+            </div>
+
             {{-- Only when push notifications (Firebase) are configured; otherwise the prompt can never work. --}}
             @if(!empty($firebaseNotify['apiKey']))
             <div class="row align-items-end firebase-notify" id="firebase-app" translate="no">
@@ -90,13 +99,20 @@
                     <strong class="zk-stat__value">{{ number_format($orders['active'] ?? 0) }}</strong>
                     <span class="zk-stat__meta">{{ number_format($orders['total'] ?? 0) }} @lang('orders in total')</span>
                 </a>
+                @unless(\App\Services\PanelRentals::current())
                 <a href="{{ route('user.ticket.list') }}" class="zk-stat">
                     <span class="zk-stat__icon"><i class="fa-regular fa-headset"></i></span>
                     <span class="zk-stat__label">@lang('Open tickets')</span>
                     <strong class="zk-stat__value">{{ number_format($tickets['pending'] ?? 0) }}</strong>
                     <span class="zk-stat__meta">@lang('We usually reply within hours')</span>
                 </a>
+                @endunless
             </div>
+
+            @unless(auth()->user()->rental_panel_id)
+            @include(template().'user.partials.vip_card')
+            @includeIf(template().'user.partials.free_trial_card')
+            @endunless
 
             <div class="row g-4 mb-4">
                 <div class="col-xl-8">
@@ -140,26 +156,6 @@
                 </div>
             </div>
 
-            <div class="row g-4">
-                <div class="col-lg-7">
-                    <div>
-                        <div class="row g-4">
-                            <div class="col-xl-12">
-                                <h4 class="mb-20">@lang('Deposit Statistics')</h4>
-                                <div id="lineChart"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-5">
-                    <div class="row g-4">
-                        <div class="col-12">
-                            <h4 class="mb-20">@lang('Transaction Statistics')</h4>
-                            <div id="columnChart"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div class="card mt-30">
                 <div class="card-header d-flex justify-content-between align-items-center border-0">
@@ -227,161 +223,9 @@
 
 
 @push('js-lib')
-    <script src="{{ asset('assets/global/js/apexcharts.min.js') }}"></script>
     <script src="{{ asset('assets/global/js/vue.global.prod.min.js') }}"></script>
 @endpush
 
-@push('script')
-    <script>
-        "use strict";
-        const baseCurrSymbol = "{{ $currency->symbol ?? basicControl()->currency_symbol }}";
-        const baseCurrency = "{{ $currency->code ?? basicControl()->base_currency }}";
-        let monthlyDeposits = @json($monthlyDeposits);
-
-        function calculateMaxValue(data) {
-            const maxValue = Math.max(...Object.values(data));
-            const increment = 1000;
-            return Math.ceil(maxValue / increment) * increment;
-        }
-
-        const maxYValue = calculateMaxValue(monthlyDeposits) + 1000;
-        if ($('#lineChart').length) {
-            let options = {
-                theme: {
-                    mode: $('.dark-theme').length ? 'dark' : 'light'
-                },
-                series: [{
-                    name: "Deposit",
-                    data: Object.values(monthlyDeposits).map(value => parseFloat(value).toFixed(2))
-                }],
-                chart: {
-                    height: 350,
-                    type: 'line',
-                    background: $('.dark-theme').length ? '#232327' : '',
-                    dropShadow: {
-                        enabled: true,
-                        color: '#000',
-                        top: 18,
-                        left: 7,
-                        blur: 10,
-                        opacity: 0.2
-                    },
-                    zoom: {
-                        enabled: false
-                    },
-                    toolbar: {
-                        show: false
-                    }
-                },
-                colors: ['#0400f599'],
-                dataLabels: {
-                    enabled: true,
-                    formatter: function (val) {
-                        return baseCurrSymbol + val;
-                    }
-                },
-                stroke: {
-                    curve: 'smooth'
-                },
-                title: {
-                    align: 'left'
-                },
-                grid: {
-                    borderColor: '',
-                    row: {
-                        colors: [$('.dark-theme').length ? '#232327' : '#f3f3f3', 'transparent'],
-                        opacity: 0.5
-                    },
-                },
-                markers: {
-                    size: 1
-                },
-                xaxis: {
-                    categories: Object.keys(monthlyDeposits),
-                    title: {
-                        text: ''
-                    }
-                },
-                yaxis: {
-                    min: 0,
-                    max: maxYValue
-                },
-                legend: {
-                    position: 'top',
-                    horizontalAlign: 'right',
-                    floating: true,
-                    offsetY: -25,
-                    offsetX: -5
-                },
-                tooltip: {
-                    y: {
-                        formatter: function (val) {
-                            return baseCurrSymbol + val;
-                        }
-                    }
-                }
-            };
-
-            let chart = new ApexCharts(document.querySelector("#lineChart"), options);
-            chart.render();
-        }
-
-        if ($('#columnChart').length) {
-            let options = {
-                theme: {
-                    mode: $('.dark-theme').length ? 'dark' : 'light',
-                },
-                series: [{
-                    name: 'Total Deposit',
-                    data: @json($totalTransaction)
-                }, {
-                    name: 'Total Transactions',
-                    data: @json($totalSend)
-                }, {
-                    name: 'Total Received',
-                    data: @json($totalReceived)
-                }],
-                chart: {
-                    type: 'bar',
-                    height: 350,
-                    background: $('.dark-theme').length ? '#232327' : ''
-                },
-                colors: ['#ffc107', '#706fc7', '#3e3e3e'],
-                plotOptions: {
-                    bar: {
-                        horizontal: false,
-                        columnWidth: '55%',
-                        endingShape: 'rounded'
-                    },
-                },
-                dataLabels: {
-                    enabled: false
-                },
-                stroke: {
-                    show: true,
-                    width: 2,
-                    colors: ['transparent']
-                },
-                xaxis: {
-                    categories: @json($months),
-                },
-                yaxis: {},
-                fill: {
-                    opacity: 1,
-                },
-                tooltip: {
-                    y: {
-                        formatter: function (val) {
-                            return baseCurrSymbol + val;
-                        }
-                    }
-                }
-            };
-            var chart = new ApexCharts(document.querySelector("#columnChart"), options);
-            chart.render();
-        }
-    </script>
-@endpush
 
 @if(!empty($firebaseNotify['apiKey']))
     @push('script')
@@ -392,7 +236,8 @@
             import {
                 getMessaging,
                 getToken,
-                onMessage
+                onMessage,
+                isSupported
             } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging.js";
 
             const firebaseConfig = {
@@ -405,6 +250,7 @@
                 measurementId: "{{$firebaseNotify['measurementId']}}"
             };
 
+            if ('Notification' in window && await isSupported()) {
             const app = initializeApp(firebaseConfig);
             const messaging = getMessaging(app);
             if ('serviceWorker' in navigator) {
@@ -455,6 +301,7 @@
                     }
                 });
             }
+            }
         </script>
         <script>
             window.newApp = Vue.createApp({
@@ -462,19 +309,20 @@
                     return {
                         user_foreground: '',
                         user_background: '',
-                        notificationPermission: Notification.permission,
-                        is_notification_skipped: sessionStorage.getItem('is_notification_skipped') == '1'
+                        notificationPermission: 'Notification' in window ? Notification.permission : 'denied',
+                        is_notification_skipped: (() => {
+                            try { return sessionStorage.getItem('is_notification_skipped') === '1'; }
+                            catch (e) { return false; }
+                        })()
                     };
                 },
                 mounted() {
-                    sessionStorage.clear();
-
                     this.user_foreground = "{{$firebaseNotify['user_foreground']}}";
                     this.user_background = "{{$firebaseNotify['user_background']}}";
                 },
                 methods: {
                     skipNotification() {
-                        sessionStorage.setItem('is_notification_skipped', '1');
+                        try { sessionStorage.setItem('is_notification_skipped', '1'); } catch (e) {}
                         this.is_notification_skipped = true;
                     }
                 }

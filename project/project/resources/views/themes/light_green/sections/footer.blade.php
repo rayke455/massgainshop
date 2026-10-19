@@ -1,3 +1,15 @@
+@php $zkPanel = \App\Services\PanelRentals::current(); @endphp
+@if($zkPanel)
+    {{-- A rented panel's domain: a simple branded footer, no platform links. --}}
+    <footer class="zk-footer">
+        <div class="container zk-footer__main">
+            <div class="zk-footer__bottom" style="border-top:0">
+                <a href="{{ url('/') }}"><img class="logo" src="{{ getFile(basicControl()->logo_driver, basicControl()->logo) }}" alt="{{ basicControl()->site_title }}"></a>
+                <p class="mb-0">&copy; {{ date('Y') }} {{ $zkPanel->name }}</p>
+            </div>
+        </div>
+    </footer>
+@else
 <!-- Footer Section start -->
 <footer class="zk-footer">
     @guest
@@ -81,3 +93,4 @@
     </div>
 </footer>
 <!-- Footer Section end -->
+@endif

@@ -252,6 +252,21 @@ class MpesaController extends Controller
 
         $deposit = Deposit::with('gateway')->where('payment_id', $checkoutRequestId)->first();
         if (!$deposit) {
+            $guest = \App\Models\GuestOrder::where('payment_ref', $checkoutRequestId)->first();
+            if ($guest) {
+                \App\Services\GuestCheckout::sync($guest); // Verify with M-Pesa, never trust callback success or failure.
+                return response()->json(['ResultCode' => 0, 'ResultDesc' => 'Received']);
+            }
+            // A customer paying on a rented panel (platform Paybill checkout).
+            $rental = \App\Models\RentalRequest::where('payment_ref', $checkoutRequestId)->where('status', 'awaiting_payment')->first();
+            if ($rental && (string) data_get($callback, 'ResultCode') === '0') {
+                $verified = (new \App\Services\MpesaService())->stkQuery($checkoutRequestId);   // never trust the callback alone
+                if ($verified && $verified['code'] === '0') {
+                    \App\Services\PanelRentals::fulfil($rental, (float) $rental->paid_amount);
+                }
+            } elseif ($rental) {
+                $rental->update(['status' => 'payment_failed', 'note' => data_get($callback, 'ResultDesc') ?: 'Payment was not completed']);
+            }
             return response()->json(['ResultCode' => 0, 'ResultDesc' => 'Received']);
         }
 

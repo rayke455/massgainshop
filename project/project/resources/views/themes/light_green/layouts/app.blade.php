@@ -42,7 +42,9 @@
 
     @stack('css-lib')
 
-    @laravelPWA
+    @unless(app()->bound('rental.panel'))
+        @laravelPWA
+    @endunless
 
 </head>
 
@@ -123,8 +125,12 @@
 @endif
 
 @include('plugins')
+@include(template().'partials.rental_brand')
 
-@include(template().'partials.pwa')
+@unless(app()->bound('rental.panel'))
+    @include(template().'partials.pwa')
+@endunless
+@include(template().'partials.whatsapp_button')
 @include(template().'partials.geo')
 @include(template().'partials.auto_translate')
 @include(template().'partials.auto_currency')

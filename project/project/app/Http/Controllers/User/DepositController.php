@@ -17,7 +17,10 @@ class DepositController extends Controller
 
     public function supportedCurrency(Request $request)
     {
-        $gateway = Gateway::where('id', $request->gateway)->first();
+        $gateway = Gateway::where('id', $request->gateway)->where('status', 1)->first();
+        if (!$gateway) {
+            return response(['success' => false, 'message' => 'Payment method not available'], 404);
+        }
         return response([
             'success' => true,
             'data' => $gateway->supported_currency,
@@ -136,6 +139,27 @@ class DepositController extends Controller
     }
 
 
+    /** Live preview on Add funds: automatic bonus + coupon bonus for an amount (base currency). */
+    public function bonusPreview(Request $request)
+    {
+        $amount = max(0, (float) $request->query('amount'));
+        $user = Auth::user();
+        if ($user->rental_panel_id) {   // platform bonuses/coupons aren't credited to a rented panel's customers
+            return response()->json(['auto_percent' => 0, 'auto_bonus' => 0, 'coupon_ok' => false, 'coupon_message' => '', 'coupon_bonus' => 0, 'total_bonus' => 0]);
+        }
+        $autoPct = \App\Services\Growth::autoBonusPercent($user, $amount);
+        $coupon = \App\Services\Growth::checkCoupon($request->query('code'), $user, $amount);
+        $auto = round($amount * $autoPct / 100, 4);
+        return response()->json([
+            'auto_percent' => $autoPct,
+            'auto_bonus' => $auto,
+            'coupon_ok' => $coupon['ok'],
+            'coupon_message' => $coupon['message'],
+            'coupon_bonus' => $coupon['bonus'],
+            'total_bonus' => round($auto + $coupon['bonus'], 4),
+        ]);
+    }
+
     public function paymentRequest(Request $request)
     {
         $amount = $request->amount;
@@ -151,7 +175,18 @@ class DepositController extends Controller
                 return back()->with('error', $checkAmountValidate['msg']);
             }
 
+            // Optional coupon: checked now against the amount that will land on the balance, re-checked when paid.
+            $couponId = null;
+            if (trim((string) $request->coupon_code) !== '') {
+                $check = \App\Services\Growth::checkCoupon($request->coupon_code, Auth::user(), (float) $checkAmountValidate['data']['payable_amount_base_in_currency']);
+                if (!$check['ok']) {
+                    return back()->withInput()->with('error', $check['message']);
+                }
+                $couponId = $check['coupon']->id;
+            }
+
             $deposit = Deposit::create([
+                'coupon_id' => $couponId,
                 'user_id' => Auth::user()->id,
                 'payment_method_id' => $checkAmountValidate['data']['gateway_id'],
                 'payment_method_currency' => $checkAmountValidate['data']['currency'],

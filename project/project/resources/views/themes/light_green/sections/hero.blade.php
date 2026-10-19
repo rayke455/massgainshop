@@ -1,6 +1,8 @@
 <!-- Hero section start -->
 @php
-    $heroMedia = @$hero['single']['media'];
+    $zkFeaturedPlatforms = \App\Models\SocialMedia::where('status', 1)
+        ->whereHas('category', fn($q) => $q->where('status', 1)->whereHas('service', fn($s) => $s->where('service_status', 1)))
+        ->orderBy('sort_by')->take(6)->get();
     // Real numbers only — nothing invented.
     $zkServiceCount = \App\Models\Service::where('service_status', 1)->count();
     $zkPlatformCount = \App\Models\SocialMedia::where('status', 1)->whereHas('category', fn($q) => $q->where('status', 1))->count();
@@ -11,28 +13,26 @@
         ['snapchat', 'Snapchat', '#E6C200'], ['discord', 'Discord', '#5865F2'], ['whatsapp', 'WhatsApp', '#25D366'],
     ];
 @endphp
-<section class="zk-hero zk-hero--v3">
+<section class="zk-hero zk-hero--v3 zk-hero--discovery">
     <div class="zk-hero__glow" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="container">
         <div class="row g-5 align-items-center">
             <div class="col-lg-6">
                 <div class="zk-hero__content">
                     <div class="zk-trust">
-                        <span class="zk-trust__stars" aria-hidden="true">
-                            @for($i = 0; $i < 5; $i++)<i class="fa-solid fa-star"></i>@endfor
-                        </span>
-                        <span class="zk-trust__text">@lang(@$hero['single']['title'] ?: 'Loved by creators, brands & resellers')</span>
+                        <span class="zk-trust__stars" aria-hidden="true"><i class="fa-solid fa-sparkles"></i></span>
+                        <span class="zk-trust__text">@lang('For creators, brands & resellers')</span>
                     </div>
 
-                    <h1 class="zk-hero__title">{!! zkHighlight(__(@$hero['single']['heading'])) !!}</h1>
-                    <p class="zk-hero__desc">@lang(@$hero['single']['short_description'])</p>
+                    <h1 class="zk-hero__title">@lang('Your next move.')<br><span class="zk-hl">@lang('More reach.')</span></h1>
+                    <p class="zk-hero__desc">@lang('Discover social media services for your favourite platforms. Compare clear prices, place an order, and follow its progress in one simple dashboard.')</p>
 
                     <div class="zk-hero__actions">
                         @guest
-                            <a href="{{ route('register') }}" class="zk-btn zk-btn--primary zk-btn--pill zk-btn--glow">
-                                @lang(@$hero['single']['button_name'] ?: 'Sign up free') <i class="fa-regular fa-arrow-right"></i>
+                            <a href="{{ route('guest.order') }}" class="zk-btn zk-btn--primary zk-btn--pill zk-btn--glow">
+                                @lang('Order without account') <i class="fa-regular fa-arrow-right"></i>
                             </a>
-                            <a href="{{ route('services') }}" class="zk-btn zk-btn--outline zk-btn--pill">@lang('See prices')</a>
+                            <a href="{{ route('register') }}" class="zk-btn zk-btn--outline zk-btn--pill">@lang('Create account')</a>
                         @else
                             <a href="{{ route('user.order.create') }}" class="zk-btn zk-btn--primary zk-btn--pill zk-btn--glow">
                                 @lang('Buy services') <i class="fa-regular fa-arrow-right"></i>
@@ -41,6 +41,7 @@
                         @endguest
                     </div>
 
+                    <a class="zk-rental-invite" href="{{ route('user.panels.index') }}"><span class="zk-rental-invite__icon" aria-hidden="true"><i class="fa-regular fa-store"></i></span><span><strong>@lang('Rent your own panel')</strong><small>@lang('Your brand, your prices. Powered by us.')</small></span><i class="fa-regular fa-arrow-up-right" aria-hidden="true"></i></a>
                     <ul class="zk-hero__facts">
                         {{-- Real counts, shown once they're big enough to impress (small numbers look weak on a sales page). --}}
                         @if($zkServiceCount >= 50)
@@ -55,28 +56,26 @@
                         <li><strong>@lang('Minutes')</strong><span>@lang('to start')</span></li>
                         <li><strong>24/7</strong><span>@lang('support')</span></li>
                     </ul>
+                    <p class="zk-hero__microcopy"><i class="fa-solid fa-lock-keyhole"></i> @lang('Transparent pricing') <span></span> @lang('No subscriptions') <span></span> @lang('Secure checkout')</p>
+                    <a class="zk-hero__how" href="#how-it-works">@lang('New here? See how it works') <i class="fa-regular fa-arrow-down" aria-hidden="true"></i></a>
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="zk-hero__visual">
-                    <div class="zk-hero__frame">
-                        <div class="zk-media">
-                            <img src="{{ getFile(@$heroMedia->image->driver, @$heroMedia->image->path) }}"
-                                 alt="@lang(strip_tags(str_replace(['[', ']'], '', @$hero['single']['heading'])))" fetchpriority="high">
-                        </div>
+                <div class="zk-discover">
+                    <div class="zk-discover__top"><span><i class="fa-solid fa-sparkles" aria-hidden="true"></i> @lang('Find your next opportunity')</span><span class="zk-discover__dot" aria-hidden="true"></span></div>
+                    <h2>@lang('Where do you want to grow?')</h2>
+                    <p>@lang('Explore the platforms in our service catalogue.')</p>
+                    <div class="zk-discover__grid">
+                        @foreach($zkFeaturedPlatforms as $platform)
+                            @php($brand = zkBrand($platform->name))
+                            <a href="#zk-ptab-{{ $platform->id }}" data-zk-discover="{{ $platform->id }}">
+                                <i class="{{ $brand ? 'fa-brands fa-'.$brand[0] : 'fa-regular fa-globe' }}" style="color: {{ $brand[1] ?? '#2563eb' }}" aria-hidden="true"></i>
+                                <span>{{ $platform->name }}</span><i class="fa-regular fa-arrow-up-right" aria-hidden="true"></i>
+                            </a>
+                        @endforeach
                     </div>
-                    <div class="zk-chip zk-chip--a" aria-hidden="true">
-                        <span class="zk-chip__icon"><i class="fa-solid fa-bolt"></i></span>
-                        <span><strong>@lang('Instant start')</strong><small>@lang('Orders begin automatically')</small></span>
-                    </div>
-                    <div class="zk-chip zk-chip--b" aria-hidden="true">
-                        <span class="zk-chip__icon zk-chip__icon--green"><i class="fa-solid fa-shield-check"></i></span>
-                        <span><strong>@lang('No password needed')</strong><small>@lang('Just paste your link')</small></span>
-                    </div>
-                    <div class="zk-chip zk-chip--c" aria-hidden="true">
-                        <span class="zk-chip__icon zk-chip__icon--gold"><i class="fa-solid fa-rotate"></i></span>
-                        <span><strong>@lang('Refill guarantee')</strong><small>@lang('On eligible services')</small></span>
-                    </div>
+                    <a class="zk-discover__all" href="{{ route('services') }}">@lang('Explore all services') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                    <div class="zk-discover__foot"><i class="fa-regular fa-shield-check" aria-hidden="true"></i> @lang('Your social account password stays yours.')</div>
                 </div>
             </div>
         </div>
@@ -96,3 +95,15 @@
     </div>
 </section>
 <!-- Hero section end -->
+<script>
+    document.querySelectorAll('[data-zk-discover]').forEach(link => {
+        link.addEventListener('click', event => {
+            const tab = document.getElementById('zk-ptab-' + link.dataset.zkDiscover);
+            if (!tab) return;
+            event.preventDefault();
+            tab.click();
+            tab.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center'});
+            tab.focus({preventScroll: true});
+        });
+    });
+</script>

@@ -24,7 +24,9 @@
 
     @stack('style')
 
-    @laravelPWA
+    @unless(app()->bound('rental.panel'))
+        @laravelPWA
+    @endunless
 
 </head>
 
@@ -66,12 +68,16 @@
 
 @stack('script')
 
-@include(template().'user.partials.pwa')
+@unless(app()->bound('rental.panel'))
+    @include(template().'user.partials.pwa')
+@endunless
+@include(template().'partials.whatsapp_button')
 @include(template().'partials.geo')
 @include(template().'partials.auto_translate')
 @include(template().'partials.auto_currency')
 
 @include('plugins')
+@include(template().'partials.rental_brand')
 
 <script>
     "use strict";

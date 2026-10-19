@@ -67,6 +67,12 @@
                                         @error('site_title')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                         @enderror
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" name="rename_everywhere" value="1" id="renameEverywhere" checked>
+                                            <label class="form-check-label small" for="renameEverywhere">
+                                                @lang('If you change the name, also replace the old name in all page texts, SEO, emails and the app name')
+                                            </label>
+                                        </div>
                                     </div>
                                     <div class="col-sm-6">
                                         <label for="timeZoneLabel" class="form-label">@lang('Time Zone')</label>

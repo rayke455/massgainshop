@@ -28,13 +28,8 @@ class Handler extends ExceptionHandler
     public function render($request, Throwable $exception)
     {
 
-        $host = request()->getScheme() . '://' . request()->getHost();
-        $appUrl = env('APP_URL');
-        if ($host !== $appUrl) {
-            if ($exception instanceof NotFoundHttpException) {
-                return redirect('/set-app-url');
-            }
-        }
+        // (Removed: an automatic redirect to /set-app-url on any 404 from another host. That let anyone
+        // change the site address by pointing a domain at the server, and reseller panel domains would trigger it.)
         return parent::render($request, $exception);
     }
 }

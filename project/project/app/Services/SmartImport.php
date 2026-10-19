@@ -55,6 +55,10 @@ class SmartImport
 
     public static function typeOf(array $s): string
     {
+        // Auto-likes/views on every new post (provider type "Subscriptions"): its own type.
+        if (strcasecmp((string) ($s['type'] ?? ''), 'Subscriptions') === 0) {
+            return 'Auto Engagement';
+        }
         // The service name is more precise than the provider category, so try it first.
         foreach ([$s['name'] ?? '', $s['category'] ?? ''] as $text) {
             $haystack = ' ' . strtolower(self::plain($text)) . ' ';

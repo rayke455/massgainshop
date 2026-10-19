@@ -58,6 +58,12 @@ class LoginController extends Controller
         return $field;
     }
 
+    /** Accounts belong to one place: the main site (no panel) or one rented panel. */
+    protected function credentials(Request $request)
+    {
+        return $request->only($this->username(), 'password') + ['rental_panel_id' => \App\Services\PanelRentals::currentId()];
+    }
+
     public function login(Request $request)
     {
         $basicControl = basicControl();
@@ -88,7 +94,8 @@ class LoginController extends Controller
         }
 
         if ($this->guard()->validate($this->credentials($request))) {
-            if (Auth::attempt([$this->username() => $request->username, 'password' => $request->password, 'child_panel_id' => null], $request->remember_me)) {
+            if (Auth::attempt([$this->username() => $request->username, 'password' => $request->password, 'child_panel_id' => null,
+                'rental_panel_id' => \App\Services\PanelRentals::currentId()], $request->remember_me)) {
                 return $this->sendLoginResponse($request);
             } else {
                 return back()->with('error', 'You are banned from this application. Please contact with system Administrator.');

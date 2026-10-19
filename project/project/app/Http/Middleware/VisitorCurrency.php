@@ -25,7 +25,7 @@ class VisitorCurrency
         if ($code) {
             $currency = Currency::where('code', $code)->where('status', 1)->first();
             if ($currency) {
-                $json = json_encode($currency);
+                $json = json_encode($currency->toArray() + ['_source' => 'automatic']);
                 $request->cookies->set('currency', $json);          // this page already uses it
                 Cookie::queue('currency', $json, 60 * 24 * 365);     // and the next ones too
             }

@@ -12,8 +12,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
-use Modules\ChildPanel\App\Models\ChildPanel;
-use Modules\ChildPanel\App\Services\ApiOrderService;
 use Facades\App\Services\ApiOrderService as OrderService;
 
 class ApiController extends Controller
@@ -31,7 +29,7 @@ class ApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->first()], 422);
+            return response()->json(['error' => $validator->errors()->first()], 422);
         }
 
         $user = User::select('id', 'api_token', 'status', 'balance')
@@ -63,6 +61,7 @@ class ApiController extends Controller
                 ]);
 
                 if ($validator->fails()) {
+                    DB::rollBack();
                     return response()->json(['status' => 'error', 'error' => $validator->messages()->first()], 422);
                 }
 
@@ -87,20 +86,22 @@ class ApiController extends Controller
                     }
                 }
 
-                $userRate = $service->user_rate ?? $service->price;
+                $userRate = \App\Services\Growth::applyVip((float) ($service->user_rate ?? $service->price), $user);
                 $price = round(($quantity * $userRate) / 1000, basicControl()->fraction_number);
 
                 if (!$isQuantityBased) {
-                    $price = $service->price ?? 0;
+                    $price = round((float) $userRate, basicControl()->fraction_number);
                 }
 
+                $user = User::lockForUpdate()->find($user->id); // two API orders at once can't both spend the same balance
                 if ($user->balance < $price) {
-                    return response()->json(['status' => 'error', 'error' => 'Insufficient balance on child panel account.'], 402);
+                    DB::rollBack();
+                    return response()->json(['status' => 'error', 'error' => 'Insufficient balance. Please add funds.'], 402);
                 }
 
                 $order = Order::create([
                     'user_id' => $user->id,
-                    'category_id' => $req['category'] ?? null,
+                    'category_id' => $req['category'] ?? $service->category_id,
                     'service_id' => $service->id,
                     'link' => $req['link'] ?? null,
                     'quantity' => $req['quantity'] ?? 0,
@@ -139,7 +140,7 @@ class ApiController extends Controller
 
                 DB::commit();
 
-                return response()->json(['status' => 'success', 'order' => $apiData['order'] ?? null]);
+                return response()->json(['status' => 'success', 'order' => $order->id]);
             } catch (\Throwable $e) {
                 DB::rollBack();
                 return response()->json(['status' => 'error', 'error' => 'Server error: ' . $e->getMessage()], 500);
@@ -147,8 +148,7 @@ class ApiController extends Controller
 
         } elseif (strtolower($req['action']) == 'create_order') {
 
-            $result = $this->createOrder($req, $user);
-            return response()->json($result, 200);
+            return $this->createOrder($req, $user);
 
         } elseif (strtolower($req['action']) == 'status') {
 
@@ -165,8 +165,8 @@ class ApiController extends Controller
             }
 
             $result['status'] = strtoupper($order->status);
-            $result['charge'] = $order->service['api_provider_price'];
-            $result['start_count'] = (int)$order->start_count;
+            $result['charge'] = $order->price;
+            $result['start_count'] = (int)$order->start_counter;
             $result['remains'] = (int)$order->remains;
             $result['currency'] = $basic->base_currency;
 
@@ -188,8 +188,8 @@ class ApiController extends Controller
                 return [
                     'order' => $order->id,
                     'status' => strtoupper($order->status),
-                    'charge' => $order->service['api_provider_price'],
-                    'start_count' => (int)$order->start_count,
+                    'charge' => $order->price,
+                    'start_count' => (int)$order->start_counter,
                     'remains' => (int)$order->remains
                 ];
             });
@@ -208,12 +208,12 @@ class ApiController extends Controller
             if (!$order) return response()->json(['error' => "Invalid order ID."], 422);
 
             $service = optional($order->service);
-            $provider = optional($service->provider);
+            $provider = optional($order->effectiveProvider());
 
             if (!$order->canBeRefilled()) return response()->json(['error' => "Not eligible for refill."], 400);
 
             if ($service->is_refill_automatic && $provider->status == 1) {
-                $res = Http::post($provider->url, [
+                $res = Http::asForm()->timeout(30)->post($provider->url, [
                     'key' => $provider->api_key,
                     'action' => 'refill',
                     'order' => $order->api_order_id,
@@ -240,15 +240,16 @@ class ApiController extends Controller
                 return response()->json(['error' => $validator->messages()->first()], 422);
             }
 
-            $order = Order::where('id', $req['order'])->where('user_id', $user->id)->whereNotNull('refill_status')->first();
+            $order = Order::where('id', $req['refill'])->where('user_id', $user->id)->whereNotNull('refill_status')->first();
 
             if (!$order) {
                 return response()->json(['error' => "The selected refill id is invalid."], 422);
             }
 
-            $result['status'] = strtoupper($order->refill_status);
+            return response()->json(['status' => strtoupper($order->refill_status)], 200);
         }
 
+        return response()->json(['error' => 'Invalid action.'], 422);
     }
 
     public function getServices()
@@ -267,7 +268,6 @@ class ApiController extends Controller
                     'refill' => $service->refill,
                     'type' => $service->service_type,
                     'currency' => basicControl()->base_currency,
-                    'api_provider_id' => $service->api_provider_id,
                 ];
             });
 
@@ -314,7 +314,9 @@ class ApiController extends Controller
                 $price = $service->price ?? 0;
             }
 
+            $user = User::lockForUpdate()->find($user->id); // no double spending with simultaneous orders
             if ($user->balance < $price) {
+                DB::rollBack();
                 return response()->json(['status' => 'error', 'error' => 'Insufficient balance on child panel account.'], 402);
             }
 
@@ -340,7 +342,7 @@ class ApiController extends Controller
             }
 
             $data = $req;
-            $apiData = ApiOrderService::placeOrderMainProvider($service, $order, $data);
+            $apiData = OrderService::placeOrderThroughApi($service, $order, $data);
 
             if ($apiData['status'] !== 'success') {
                 DB::rollBack();
@@ -359,7 +361,7 @@ class ApiController extends Controller
 
             DB::commit();
 
-            return response()->json(['status' => 'success', 'order' => $apiData['order'] ?? null]);
+            return response()->json(['status' => 'success', 'order' => $order->id]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['status' => 'error', 'error' => 'Server error: ' . $e->getMessage()], 500);

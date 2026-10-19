@@ -45,6 +45,15 @@ class OrderController extends Controller
             } else {
                 $data['selectService'] = null;
             }
+            if ($data['selectService']) {
+                // Same rules as the service list: customer's real price, never our cost or supplier ids.
+                $sel = $data['selectService'];
+                $sel->price = \App\Services\Growth::rateFor($sel, auth()->user());
+                $sel->makeHidden(['original_price', 'api_provider_price', 'api_provider_id', 'api_service_id',
+                    'price_percentage_increase', 'backup_api_provider_id', 'backup_api_service_id', 'user_rate']);
+            }
+            $favIds = \Illuminate\Support\Facades\DB::table('favorite_services')->where('user_id', auth()->id())->pluck('service_id');
+            $data['favorites'] = Service::whereIn('id', $favIds)->where('service_status', 1)->get(['id', 'service_title']);
             $data['currency'] = Currency::where('code', auth()->user()->currency)->first();
             $data['socialMedia'] = SocialMedia::has('category')->with('category')->orderBy('sort_by', 'asc')->get();
             return view(template() . 'user.order.add', $data);
@@ -60,9 +69,11 @@ class OrderController extends Controller
         }])
             ->whereHas('service', function ($query) {
                 $query->where('service_status', 1)->userRate()
-                    ->whereHas('provider', function ($query) {
-                        $query->where('status', 1);
-                    })->orWhereDoesntHave('provider');
+                    ->where(function ($query) {
+                        $query->whereHas('provider', function ($query) {
+                            $query->where('status', 1);
+                        })->orWhereDoesntHave('provider');
+                    });
             })
             ->where('status', 1)
             ->when($request->social_media_id != 0, function ($query) use ($request) {
@@ -100,10 +111,25 @@ class OrderController extends Controller
                     }
 
                     $service->average_time_minutes = $timeInMinutes ?? null;
+
+                    // Show exactly what this customer pays: special rate + VIP discount. Never send our cost or supplier ids.
+                    $service->list_price = (float) ($service->user_rate ?? $service->price);
+                    $service->price = \App\Services\Growth::rateFor($service, auth()->user());
+                    $service->makeHidden(['original_price', 'api_provider_price', 'api_provider_id', 'api_service_id',
+                        'price_percentage_increase', 'backup_api_provider_id', 'backup_api_service_id', 'user_rate']);
                 }
 
                 return $category;
             });
+
+        // Panel customers never see services their panel owner hid.
+        $hidden = \App\Services\PanelRentals::hiddenIds(auth()->user());
+        if ($hidden) {
+            $categories = $categories->map(function ($c) use ($hidden) {
+                $c->setRelation('service', $c->service->reject(fn($s) => in_array((int) $s->id, $hidden, true))->values());
+                return $c;
+            })->filter(fn($c) => $c->service->isNotEmpty())->values();
+        }
 
         return response()->json($categories);
     }
@@ -146,7 +172,12 @@ class OrderController extends Controller
                 }
             }
 
-            $userRate = $service->user_rate ?? $service->price;
+            // VIP level discount is applied to the rate (server side only).
+            if (in_array((int) $service->id, \App\Services\PanelRentals::hiddenIds(Auth::user()), true)) {
+                DB::rollBack();
+                return response(['status' => 'error', 'message' => 'This service is not available.']);
+            }
+            $userRate = \App\Services\Growth::rateFor($service, Auth::user());
             // Packages/subscriptions are a flat price. Never take the price from the request:
             // a customer could send 0 or a negative number and get free orders or extra balance.
             $price = $isQuantityBased
@@ -158,7 +189,8 @@ class OrderController extends Controller
                 return response(['status' => 'error', 'message' => 'Invalid price for this service.']);
             }
 
-            $user = Auth::user();
+            // Lock the balance so two orders at the same moment can't both spend it.
+            $user = \App\Models\User::lockForUpdate()->find(Auth::id());
             if ($user->balance < $price) {
                 DB::rollBack();
                 $missing = round($price - $user->balance, 2);
@@ -195,9 +227,20 @@ class OrderController extends Controller
                 ]);
             }
 
-            ApiOrderService::placeOrder($service, $order, $data);
+            $sent = ApiOrderService::placeOrder($service, $order, $data);
+            if ($sent === false) {
+                // Every provider refused it: don't charge the customer for an order that can't run.
+                DB::rollBack();
+                return response([
+                    'status' => 'error',
+                    'message' => 'The supplier could not accept this order right now. You were not charged. Please try another service or try again later.',
+                ]);
+            }
 
             $user->decrement('balance', $price);
+            if ($user->rental_panel_id) {
+                \App\Services\PanelRentals::creditSale($order, $user);   // reseller's profit → their earnings
+            }
 
             $transaction = Transaction::create([
                 'transactional_id' => $order->id,
@@ -309,10 +352,10 @@ class OrderController extends Controller
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->whereNotNull('refill_status')
@@ -323,18 +366,20 @@ class OrderController extends Controller
 
     public function orderRefill(Request $request, $id): \Illuminate\Http\RedirectResponse
     {
-        $order = Order::with('service', 'service.provider')->findOrFail($id);
+        $order = Order::with('service', 'service.provider')->where('user_id', Auth::id())->findOrFail($id);
         try {
             if ($order->canBeRefilled()) {
 
                 if (optional($order->service)->is_refill_automatic == 1) {
 
-                    if (optional(optional($order->service)->provider)->status != 1) {
+                    $provider = $order->effectiveProvider();
+                    if (optional($provider)->status != 1) {
                         return back()->with('error', 'You are not eligible to send refill request.');
                     }
 
-                    $response = Http::post(optional(optional($order->service)->provider)->url, [
-                        'key' => optional(optional($order->service)->provider)->api_key,
+                    // SMM provider APIs expect form data, not JSON.
+                    $response = Http::asForm()->timeout(30)->post($provider->url, [
+                        'key' => $provider->api_key,
                         'action' => 'refill',
                         'order' => $order->api_order_id,
                     ]);
@@ -388,10 +433,10 @@ class OrderController extends Controller
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
                 return $query->whereBetween('created_at', [$search['from_date'], $search['to_date']]);
             })
-            ->when(isset($search['from_date']) && !isset($search['to_date']), function ($query) use ($search) {
-                return $query->whereDate('created_at', isset($search['from_date']));
+            ->when(!empty($search['from_date']) && empty($search['to_date']), function ($query) use ($search) {
+                return $query->whereDate('created_at', $search['from_date']);
             })
-            ->when(!isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
+            ->when(empty($search['from_date']) && !empty($search['to_date']), function ($query) use ($search) {
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->paginate(15);

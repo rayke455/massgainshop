@@ -99,12 +99,17 @@
                                 <ul class="zk-summary show-deposit-summery">
                                     <li class="zk-summary__empty">@lang('Enter an amount to see the total.')</li>
                                 </ul>
-                                <div class="form-check mt-3">
-                                    <input class="form-check-input agree-checked" type="checkbox" id="zkAgree">
-                                    <label class="form-check-label" for="zkAgree">
-                                        @lang('I agree to the') <a href="{{ url('terms-and-conditions') }}" target="_blank">@lang('terms and conditions')</a>
-                                    </label>
+                                @unless(auth()->user()->rental_panel_id)
+                                <div class="zk-coupon mt-3">
+                                    <label for="zkCoupon" class="form-label small mb-1">@lang('Have a coupon code?')</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control text-uppercase" id="zkCoupon" name="coupon_code" maxlength="40"
+                                               value="{{ old('coupon_code', request('coupon')) }}" placeholder="@lang('e.g. WELCOME10')" autocomplete="off">
+                                        <button type="button" class="btn btn-outline-primary" id="zkCouponApply">@lang('Apply')</button>
+                                    </div>
+                                    <small class="d-block mt-1" id="zkCouponMsg" aria-live="polite"></small>
                                 </div>
+                                @endunless
                                 <div class="payment-btn-group mt-3">
                                     <button type="submit" class="zk-btn zk-btn--primary zk-btn--lg w-100 zk-pay-btn" disabled>
                                         @lang('Continue to payment') <i class="fa-regular fa-arrow-right"></i>
@@ -147,7 +152,7 @@
             let amountOk = false;
             function refreshPayButton(ok) {
                 if (typeof ok === 'boolean') amountOk = ok;
-                $('.zk-pay-btn').prop('disabled', !(amountOk && $('.agree-checked').is(':checked') && selectedGateway));
+                $('.zk-pay-btn').prop('disabled', !(amountOk && selectedGateway));
             }
 
             if (selectedGateway) {
@@ -248,21 +253,58 @@
                 });
             }
 
-            function showSummary(response, baseCurrency) {
-                const fmt = n => Number(n).toFixed(2);
-                let rows = `
-                    <li><span>@lang("Amount")</span><span>${fmt(response.amount)} ${response.currency}</span></li>
-                    <li><span>@lang("Fee")</span><span>${fmt(response.charge)} ${response.currency}</span></li>`;
-                if (response.currency !== baseCurrency) {
-                    rows += `<li><span>@lang("Rate")</span><span>1 ${baseCurrency} = ${response.conversion_rate} ${response.currency}</span></li>`;
+            // What lands on the balance, in the currency the customer sees their balance in (no exchange-rate maths shown).
+            const userCurrency = @json(optional($zkCurrencyModel)->code);
+            const userRate = @json((float) optional($zkCurrencyModel)->conversion_rate);
+            // Show a base-currency amount in the currency the customer sees their balance in.
+            function money(baseAmount, response, baseCurrency) {
+                const b = Number(baseAmount) || 0;
+                if (userCurrency && userCurrency === response.currency && Number(response.amount_in_base_currency) > 0) {
+                    return (b * Number(response.amount) / Number(response.amount_in_base_currency)).toFixed(2) + ' ' + userCurrency;
                 }
-                rows += `
-                    <li class="zk-summary__total"><span>@lang("You pay")</span><strong>${fmt(response.payable_amount)} ${response.currency}</strong></li>
-                    <li class="zk-summary__credit"><span>@lang("Added to balance")</span><span>${response.amount_in_base_currency} ${baseCurrency}</span></li>`;
-                $('.show-deposit-summery').html(rows);
+                if (userCurrency && userRate > 0 && userCurrency !== baseCurrency) {
+                    return (b * userRate).toFixed(2) + ' ' + userCurrency;
+                }
+                return b.toFixed(2) + ' ' + baseCurrency;
             }
 
-            $(document).on('change', '.agree-checked', () => refreshPayButton());
+            let lastSummary = null, bonusReq = 0;
+            function showSummary(response, baseCurrency) {
+                lastSummary = {response, baseCurrency};
+                const fmt = n => Number(n).toFixed(2);
+                const base = Number(response.amount_in_base_currency) || 0;
+                const render = (bonus, label) => {
+                    let rows = `
+                    <li><span>@lang("Amount")</span><span>${fmt(response.amount)} ${response.currency}</span></li>
+                    <li><span>@lang("Fee")</span><span>${fmt(response.charge)} ${response.currency}</span></li>
+                    <li class="zk-summary__total"><span>@lang("You pay")</span><strong>${fmt(response.payable_amount)} ${response.currency}</strong></li>`;
+                    if (bonus > 0) {
+                        rows += `<li class="zk-summary__bonus"><span>🎁 ${label}</span><span>+${money(bonus, response, baseCurrency)}</span></li>`;
+                    }
+                    rows += `<li class="zk-summary__credit"><span>@lang("Added to balance")</span><span>${money(base + bonus, response, baseCurrency)}</span></li>`;
+                    $('.show-deposit-summery').html(rows);
+                };
+                render(0, '');
+                const code = $('#zkCoupon').val().trim();
+                const my = ++bonusReq;
+                $.get(@json(route('user.deposit.bonusPreview')), {amount: base, code: code}, function (d) {
+                    if (my !== bonusReq) return;
+                    const parts = [];
+                    if (d.auto_bonus > 0) parts.push(@json(__('Bonus')) + ' ' + d.auto_percent + '%');
+                    if (d.coupon_ok) parts.push(@json(__('Coupon')));
+                    render(Number(d.total_bonus) || 0, parts.join(' + '));
+                    const msg = $('#zkCouponMsg');
+                    if (!code) { msg.text('').removeClass('text-success text-danger'); }
+                    else { msg.text(d.coupon_message).toggleClass('text-success', d.coupon_ok).toggleClass('text-danger', !d.coupon_ok); }
+                });
+            }
+
+            $('#zkCouponApply').on('click', function () {
+                if (lastSummary) showSummary(lastSummary.response, lastSummary.baseCurrency);
+                else $('#zkCouponMsg').text(@json(__('Enter an amount first.'))).addClass('text-danger');
+            });
+            $('#zkCoupon').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('#zkCouponApply').click(); } });
+
         });
     </script>
 @endpush

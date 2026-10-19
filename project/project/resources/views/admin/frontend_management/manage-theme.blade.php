@@ -19,7 +19,7 @@
         </div>
         <div class="alert alert-soft-primary mb-4" role="alert">
             <i class="bi-info-circle me-1"></i>
-            @lang("Zirka Light has the new Zirka Social design. The other themes use the original template design and content, so check them before switching.")
+            @lang("Mass Fame Light has the new Mass Fame Shop design. The other themes use the original template design and content, so check them before switching.")
         </div>
         <div class="row d-flex justify-content-center">
             @foreach(config('themes') as $key => $theme)

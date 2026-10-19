@@ -25,7 +25,9 @@ class Service extends Model
         'drip_feed',
         'refill',
         'is_refill_automatic',
-        'description'
+        'description',
+        'backup_api_provider_id',
+        'backup_api_service_id',
     ];
 
     public function category()

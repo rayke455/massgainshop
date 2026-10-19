@@ -83,17 +83,6 @@ class PaymentIY
 
         $resp = $response->json();
 
-        dd($resp);
-
-        // Debugging: view signature and headers
-        // dd([
-        //     'random' => $randomString,
-        //     'authorization' => $authorization,
-        //     'payload' => $payload,
-        //     'response' => $resp,
-        // ]);
-
-        // 5️⃣ Handle Response
         $send = [];
 
         if ($response->successful() && isset($resp['status']) && $resp['status'] === 'success') {
@@ -196,7 +185,6 @@ class PaymentIY
 
         // Create Payment
         $payWithIyzicoInitialize = PayWithIyzicoInitialize::create($request, $options);
-        dd($payWithIyzicoInitialize);
 
         return $payWithIyzicoInitialize;
     }

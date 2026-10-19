@@ -42,7 +42,7 @@
                                 </tr>
                                 </thead>
                                 <tbody>
-                                @foreach($template->short_keys as $key=> $value)
+                                @foreach(($template->short_keys ?? []) as $key=> $value)
                                     <tr>
                                         <td>
                                             <pre>[[@lang($key)]]</pre>

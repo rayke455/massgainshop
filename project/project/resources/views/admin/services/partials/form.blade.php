@@ -123,7 +123,24 @@
                autocomplete="off" value="{{ old('api_service_id', $svc->api_service_id ?? '') }}">
         @error('api_service_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
     </div>
+    <div class="col-md-6">
+        <label class="form-label">@lang('Backup provider') <small class="text-muted">(@lang('optional'))</small></label>
+        <select class="form-select" name="backup_api_provider_id">
+            <option value="">@lang('None')</option>
+            @foreach($apiProviders as $apiProvider)
+                <option value="{{ $apiProvider->id }}" {{ old('backup_api_provider_id', $svc->backup_api_provider_id ?? null) == $apiProvider->id ? 'selected' : '' }}>{{ $apiProvider->api_name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">@lang('Backup service ID') <small class="text-muted">(@lang('optional'))</small></label>
+        <input type="text" class="form-control @error('backup_api_service_id') is-invalid @enderror" name="backup_api_service_id"
+               value="{{ old('backup_api_service_id', $svc->backup_api_service_id ?? '') }}" placeholder="@lang('Same service at the backup provider')">
+        @error('backup_api_service_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+    </div>
     <div class="col-12">
+        <small class="text-muted d-block mb-1"><i class="bi-life-preserver"></i>
+            @lang('If the main provider refuses an order (out of balance, service down), it is sent to the backup automatically. Customers are never charged for an order no provider accepts.')</small>
         <small class="text-muted"><i class="bi-info-circle"></i>
             @lang('Your cost is read from the provider automatically when you save.')
             @if($svc && $isApi && $costNow !== null)

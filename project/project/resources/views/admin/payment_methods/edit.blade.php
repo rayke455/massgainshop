@@ -55,6 +55,26 @@
             </div>
         @endif
 
+        @if($method->code === 'snippe')
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="card-header-title mb-0"><i class="bi-phone me-1"></i> @lang('Snippe setup (Tanzania mobile money)')</h4>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-2">
+                        <li>@lang('Create or log in to your account at') <a href="https://snippe.sh/dashboard" target="_blank" rel="noopener">snippe.sh/dashboard</a>.</li>
+                        <li>@lang('Copy your API key (starts with snp_) into "Api Key" below.')</li>
+                        <li>@lang('Optional but recommended: Settings → Webhook Secret (starts with whsec_) into "Webhook Secret".')</li>
+                        <li>@lang('Switch the method on and Save. Customers pay in TZS (minimum 500 TZS) with M-Pesa, Airtel Money, Mixx by Yas or Halotel.')</li>
+                    </ol>
+                    <p class="mb-0 text-muted small">
+                        @lang('Payment notifications are sent to') <code>{{ preg_replace('#^http://(?!localhost|127\.0\.0\.1)#', 'https://', route('snippe.webhook')) }}</code>
+                        @lang('automatically with each payment. Every payment is also double-checked with Snippe before the balance is credited, so deposits still confirm on a local test site.')
+                    </p>
+                </div>
+            </div>
+        @endif
+
         <div class="row payment_method">
             <div class="col-lg-12">
                 <div class="d-grid gap-3 gap-lg-5">
@@ -147,6 +167,12 @@
                                                                 ];
                                                             @endphp
                                                             <small class="text-muted">{{ $zkHelp[$key] ?? '' }}</small>
+                                                        @endif
+                                                        @if($method->code === 'snippe')
+                                                            <small class="text-muted">{{ [
+                                                                'api_key' => __('From snippe.sh/dashboard. Starts with snp_.'),
+                                                                'webhook_secret' => __('Settings → Webhook Secret (whsec_…). Optional: used to verify notifications.'),
+                                                            ][$key] ?? '' }}</small>
                                                         @endif
                                                     </div>
                                                 </div>

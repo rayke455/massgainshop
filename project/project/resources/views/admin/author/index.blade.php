@@ -154,11 +154,11 @@
 @endsection
 
 @push('css-lib')
-    <link rel="stylesheet" href="{{ asset('assets/admin/vendor/flatpickr/dist/flatpickr.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/global/css/flatpickr.min.css') }}">
 @endpush
 
 @push('js-lib')
-    <script src="{{ asset('assets/admin/vendor/flatpickr/dist/flatpickr.min.js') }}"></script>
+    <script src="{{ asset('assets/global/js/flatpickr.js') }}"></script>
 @endpush
 
 @push('script')

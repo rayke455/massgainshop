@@ -36,6 +36,8 @@ class ServiceStoreRequest extends FormRequest
             'description' => 'nullable|string|max:2000',
             // Optional own cost per 1k for manual services (API services read it from the provider).
             'cost' => 'nullable|numeric|min:0',
+            'backup_api_provider_id' => 'nullable|integer|exists:api_providers,id',
+            'backup_api_service_id' => 'nullable|required_with:backup_api_provider_id|integer|min:1',
         ];
     }
 }
