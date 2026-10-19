@@ -42,7 +42,17 @@ class CheckModuleIsEnable
                 return $next($request);
             }
         } else {
-            if (isset($mainDomain['host']) && $childDomain == $mainDomain['host']) {
+            if (isset($mainDomain['host'])) {
+                $targetHost = strtolower($mainDomain['host']);
+                $currentHost = strtolower($childDomain);
+                if ($currentHost === $targetHost || 
+                    $currentHost === 'www.' . $targetHost || 
+                    'www.' . $currentHost === $targetHost ||
+                    $currentHost === 'localhost' ||
+                    $currentHost === '127.0.0.1') {
+                    return $next($request);
+                }
+            } else {
                 return $next($request);
             }
             abort(404);

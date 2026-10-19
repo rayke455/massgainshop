@@ -46,8 +46,8 @@ if (!function_exists('template')) {
 if (!function_exists('getTheme')) {
     function getTheme()
     {
-        $theme = session('theme') ?? basicControl()->theme ?? null;
-        return $theme;
+        $theme = session('theme') ?? (basicControl() ? basicControl()->theme : null) ?? 'light_green';
+        return $theme ?: 'light_green';
     }
 }
 
