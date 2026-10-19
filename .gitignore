@@ -33,3 +33,5 @@ Thumbs.db
 
 # Local dev tools (cloudflared tunnel)
 /tools/
+.vercel
+.env*
