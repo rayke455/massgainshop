@@ -1,0 +1,13 @@
+.git
+.github
+Documentation
+SQL
+tools
+*.bat
+*.sql
+*.md
+project/project/tests
+project/project/storage/logs/*
+project/project/storage/framework/cache/*
+project/project/storage/framework/sessions/*
+project/project/storage/framework/views/*
