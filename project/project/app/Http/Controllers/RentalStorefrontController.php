@@ -41,7 +41,9 @@ class RentalStorefrontController extends Controller {
             return back()->withInput()->withErrors(['quantity' => "Quantity must be between {$service->min_amount} and {$service->max_amount}."]);
         }
         $cur = PanelRentals::currency($panel);
-        $quote = round($service->panel_price * $data['quantity'] / 1000, 2);
+        $quote = PanelRentals::quantityBased($service)
+            ? round($service->panel_price * $data['quantity'] / 1000, 2)
+            : round($service->panel_price, 2);
 
         $phone = null;
         if ($useMpesa) {

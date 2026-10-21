@@ -1,9 +1,16 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>@yield('title', 'Panel rentals')</title><link rel="icon" href="{{ getFile(basicControl()->favicon_driver, basicControl()->favicon) }}">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f7fc;color:#17213a;font:16px/1.6 system-ui,sans-serif}header,main{max-width:1120px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;gap:16px;align-items:center}h1,h2,h3{line-height:1.2}h1{font-size:34px}a{color:#2454dc}label{display:block;font-weight:600;margin-top:16px}input,select,button{font:inherit}input:not([type=checkbox]),select{width:100%;border:1px solid #dbe1ed;border-radius:10px;background:white;padding:12px}button,.button{display:inline-block;border:0;border-radius:10px;padding:12px 18px;background:#2454dc;color:white;text-decoration:none;cursor:pointer;margin-top:16px}.muted{color:#637087}.card{background:white;border:1px solid #e2e7f0;border-radius:20px;padding:26px;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.notice{padding:16px;border-radius:12px;background:#eaf1ff;margin:16px 0}.error{background:#fff0ef;color:#aa281e}.tag{display:inline-block;padding:4px 10px;border-radius:20px;background:#eef2fc;font-size:13px}code{overflow-wrap:anywhere}p{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;border-bottom:1px solid #e2e7f0}.table-wrap{overflow:auto}small{display:block;color:#637087}.inline{display:flex;flex-wrap:wrap;gap:12px}.inline label{font-weight:400}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:650px){.grid{grid-template-columns:1fr}main,header{padding:16px}.card{padding:20px}h1{font-size:28px}}
-header strong{min-width:0;overflow-wrap:anywhere}header>a{flex-shrink:0}.grid>*{min-width:0}img,iframe{max-width:100%}h1,h2,h3,a{overflow-wrap:anywhere}input,select{min-width:0}button,.button{max-width:100%;white-space:normal}@media(max-width:400px){header{align-items:flex-start;flex-wrap:wrap}.card{padding:16px}}
+[hidden]{display:none!important}header strong{min-width:0;overflow-wrap:anywhere}header>a{flex-shrink:0}.grid>*{min-width:0}img,iframe{max-width:100%}h1,h2,h3,a{overflow-wrap:anywhere}input,select{min-width:0}button,.button{max-width:100%;white-space:normal}@media(max-width:400px){header{align-items:flex-start;flex-wrap:wrap}.card{padding:16px}}
 </style>@stack('styles')</head><body>
-<header><strong>@yield('brand', basicControl()->site_title.' · Panel rentals')</strong>@yield('nav')</header>
+<header><strong>@yield('brand', 'Mass Panel Shop')</strong>@yield('nav')</header>
+@if($ownerPreview ?? false)
+<aside class="notice tenant-preview-banner" role="note">Tenant-owner preview · sample data only · saving and payments disabled.
+<div class="inline"><a href="{{ route('rental.preview.alias') }}">Control panel</a><a href="{{ route('rental.preview.alias', ['screen'=>'content']) }}">Pages & FAQ</a><a href="{{ route('rental.preview.alias', ['screen'=>'promotions']) }}">Promotions</a><a href="{{ route('rental.preview.customer') }}">Customer preview</a></div></aside>
+@endif
 <main>@if(session('success'))<div class="notice" role="status">{{ session('success') }}</div>@endif
-@if($errors->any())<div class="notice error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-@yield('content')</main></body></html>
+@if(isset($errors) && $errors->any())<div class="notice error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+@if($ownerPreview ?? false)<fieldset disabled style="border:0;padding:0;margin:0;min-width:0">@endif
+@yield('content')
+@if($ownerPreview ?? false)</fieldset>@endif
+</main></body></html>

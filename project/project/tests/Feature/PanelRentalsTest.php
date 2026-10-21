@@ -18,7 +18,8 @@ class PanelRentalsTest extends TestCase {
         $user = $this->payer(10);
         \Illuminate\Support\Facades\DB::transaction(fn() => PanelRentals::charge($user, ['price' => 2.5], 'Test rental'));
         $this->assertEquals(7.5, $user->fresh()->balance);
-        $this->assertDatabaseHas('transactions', ['user_id' => $user->id, 'amount' => 2.5, 'trx_type' => '-', 'balance' => '7.50']);
+        $this->assertDatabaseHas('transactions', ['user_id' => $user->id, 'amount' => 2.5, 'trx_type' => '-']);
+        $this->assertEquals(7.5, \App\Models\Transaction::where('user_id', $user->id)->firstOrFail()->balance);
     }
     public function test_insufficient_funds_leave_balance_unchanged(): void {
         $user = $this->payer(1);
@@ -93,5 +94,66 @@ class PanelRentalsTest extends TestCase {
         $this->actingAs($user);
         $view = app(PanelRentalController::class)->index();
         $this->assertSame('rentals.manage', $view->name());
+    }
+    public function test_control_navigation_respects_tenant_features(): void {
+        $panel = $this->panel(['features' => ['markup', 'accounts']]);
+        $html = view('rentals.control-navigation', ['panel' => $panel, 'customerTotal' => 0])->render();
+        $this->assertStringContainsString('href="#services"', $html);
+        $this->assertStringContainsString('href="#customers"', $html);
+        $this->assertStringContainsString('href="#domains"', $html);
+        $panel->features = [];
+        $html = view('rentals.control-navigation', ['panel' => $panel, 'customerTotal' => 0])->render();
+        $this->assertStringNotContainsString('href="#services"', $html);
+        $this->assertStringNotContainsString('href="#customers"', $html);
+    }
+    public function test_customer_search_cannot_include_another_panels_customers(): void {
+        $owner = $this->payer(10);
+        $this->actingAs($owner);
+        $panel = $this->panel(['owner_id' => $owner->id]);
+        $other = $this->panel(['owner_id' => $owner->id]);
+        $customer = $this->payer(0);
+        $customer->forceFill(['rental_panel_id' => $panel->id])->save();
+        $outsider = $this->payer(0);
+        $outsider->forceFill(['rental_panel_id' => $other->id])->save();
+        request()->merge(['customer_search' => '@example.test']);
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertTrue($data['customers']->getCollection()->contains('id', $customer->id));
+        $this->assertFalse($data['customers']->getCollection()->contains('id', $outsider->id));
+        $this->assertSame(1, $data['customerTotal']);
+    }
+    public function test_panel_overview_counts_are_scoped_to_the_panel(): void {
+        $owner = $this->payer(10); $this->actingAs($owner);
+        $panel = $this->panel(['owner_id' => $owner->id]);
+        $other = $this->panel(['owner_id' => $owner->id]);
+        $customer = $this->payer(0); $customer->forceFill(['rental_panel_id' => $panel->id])->save();
+        $firstOrder = \App\Models\Order::create(['user_id' => $customer->id, 'service_id' => 0, 'category_id' => 0, 'link' => 'https://example.test', 'quantity' => 10, 'price' => 1, 'status' => 'pending']);
+        $firstOrder->forceFill(['rental_panel_id' => $panel->id])->save();
+        $secondOrder = \App\Models\Order::create(['user_id' => $customer->id, 'service_id' => 0, 'category_id' => 0, 'link' => 'https://example.test', 'quantity' => 10, 'price' => 1, 'status' => 'pending']);
+        $secondOrder->forceFill(['rental_panel_id' => $other->id])->save();
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertSame(1, $data['orderTotal']);
+        $this->assertCount(1, $data['orderStats']);
+        $this->assertCount(1, $data['topServices']);
+    }
+    public function test_customer_order_filter_stays_inside_panel_scope(): void {
+        $owner = $this->payer(10); $this->actingAs($owner);
+        $panel = $this->panel(['owner_id' => $owner->id]); $other = $this->panel(['owner_id' => $owner->id]);
+        $customer = $this->payer(0); $customer->forceFill(['rental_panel_id' => $panel->id])->save();
+        $first = \App\Models\Order::create(['user_id' => $customer->id, 'service_id' => 0, 'category_id' => 0, 'link' => 'https://example.test', 'quantity' => 10, 'price' => 1, 'status' => 'completed']);
+        $first->forceFill(['rental_panel_id' => $panel->id])->save();
+        $second = \App\Models\Order::create(['user_id' => $customer->id, 'service_id' => 0, 'category_id' => 0, 'link' => 'https://example.test', 'quantity' => 10, 'price' => 1, 'status' => 'completed']);
+        $second->forceFill(['rental_panel_id' => $other->id])->save();
+        request()->merge(['customer_id' => $customer->id]);
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertSame([$first->id], $data['customerOrders']->pluck('id')->all());
+        request()->merge(['order_search' => 'example.test']);
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertSame([$first->id], $data['customerOrders']->pluck('id')->all());
+        request()->merge(['order_search' => (string) $second->id]);
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertCount(0, $data['customerOrders']);
+        request()->merge(['order_search' => (string) $first->id, 'order_status' => 'pending']);
+        $data = app(PanelRentalController::class)->show($panel->id)->getData();
+        $this->assertCount(0, $data['customerOrders']);
     }
 }

@@ -10,7 +10,9 @@
                     <p class="zk-signup__lead">@lang('Bring your social media goals together in one place. Create an account, explore services, and grow at your own pace.')</p>
                     <div class="zk-signup__platforms" aria-label="@lang('Supported platforms')">
                         @foreach(['Instagram', 'TikTok', 'YouTube', 'Facebook', 'Telegram', 'WhatsApp'] as $platform)
-                            @php($brand = zkBrand($platform))
+                            @php
+                                $brand = zkBrand($platform);
+                            @endphp
                             <span title="{{ $platform }}" style="--platform-color: {{ $brand[1] }}"><i class="fa-brands fa-{{ $brand[0] }}" aria-hidden="true"></i><span class="visually-hidden">{{ $platform }}</span></span>
                         @endforeach
                     </div>
@@ -19,7 +21,7 @@
                         <li><span>02</span><div><strong>@lang('Find your fit')</strong><p>@lang('Browse platforms, compare services, and see prices upfront.')</p></div></li>
                         <li><span>03</span><div><strong>@lang('Stay in control')</strong><p>@lang('Add funds when you are ready and track orders from your dashboard.')</p></div></li>
                     </ol>
-                    <a class="zk-signup__explore" href="{{ route('services') }}">@lang('Explore services first') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                    <a class="zk-signup__explore" href="{{ \App\Services\PanelRentals::current() ? url('/') : route('services') }}">@lang('Explore services first') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
                 </div>
                 <div class="col-lg-6 col-md-10 zk-signup__form">
                     <div class="zk-auth__card">
@@ -30,7 +32,7 @@
                             <div class="zk-signup__login">@lang('Already a member?') <a href="{{ route('login') }}">@lang('Log in')</a></div>
                         </div>
 
-                        @if(config('socialite.google_status') || config('socialite.facebook_status') || config('socialite.github_status'))
+                        @if(!\App\Services\PanelRentals::current() && (config('socialite.google_status') || config('socialite.facebook_status') || config('socialite.github_status')))
                             <div class="zk-auth__social">
                                 @if(config('socialite.google_status'))
                                     <a href="{{ route('socialiteLogin','google') }}" class="zk-btn zk-btn--ghost">
@@ -98,6 +100,7 @@
                                 @enderror
                             </div>
 
+                            @include('rentals.registration-fields')
                             <div class="zk-field">
                                 <label for="password">@lang('Password')</label>
                                 <div class="password-box">
@@ -148,12 +151,24 @@
                             <button type="submit" class="zk-btn zk-btn--primary w-100 mt-2">@lang('Create free account') <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></button>
                             <p class="zk-signup__note"><i class="fa-regular fa-circle-check" aria-hidden="true"></i> @lang('Free to join. No payment details needed.')</p>
 
+                            @php
+                                $signupPanel = \App\Services\PanelRentals::current();
+                            @endphp
+                            @if($signupPanel)
+                                @if($signupPanel->workspace()['terms'] || $signupPanel->workspace()['privacy'])
+                                <p class="zk-auth__terms">
+                                    @if($signupPanel->workspace()['terms'])<a href="{{ url('terms') }}">@lang('Terms')</a>@endif
+                                    @if($signupPanel->workspace()['privacy'])<a href="{{ url('privacy') }}">@lang('Privacy Policy')</a>@endif
+                                </p>
+                                @endif
+                            @else
                             <p class="zk-auth__terms">
                                 @lang('By signing up you agree to our')
-                                <a href="{{ url('terms-and-conditions') }}">@lang('Terms')</a>
+                                <a href="{{ url(\App\Services\PanelRentals::current() ? 'terms' : 'terms-and-conditions') }}">@lang('Terms')</a>
                                 @lang('and')
-                                <a href="{{ url('privacy-policy') }}">@lang('Privacy Policy')</a>.
+                                <a href="{{ url(\App\Services\PanelRentals::current() ? 'privacy' : 'privacy-policy') }}">@lang('Privacy Policy')</a>.
                             </p>
+                            @endif
                         </form>
                     </div>
                 </div>

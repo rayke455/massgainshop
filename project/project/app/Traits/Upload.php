@@ -71,7 +71,7 @@ trait Upload
         return false;
     }
 
-    public function fileDelete($driver = 'local', $old)
+    public function fileDelete($driver, $old = null)
     {
         if (!empty($old)) {
             if (Storage::disk($driver)->exists($old)) {

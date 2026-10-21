@@ -3,7 +3,7 @@
 @section('content')
 @php $base = \App\Services\PanelRentals::baseDomain($settings); @endphp
 <h1>Your brand. Your panel.</h1>
-<p class="muted">Run your own SMM panel powered by {{ basicControl()->site_title }}: your name, logo and prices. Customers pay you with M-Pesa through our Paybill, orders start automatically and your profit goes to your earnings wallet.</p>
+<p class="muted">Run your own SMM panel with Mass Panel Shop: choose your name, logo and prices. Customers pay you with M-Pesa, orders start automatically and your profit goes to your earnings wallet.</p>
 
 <div class="grid">
     <div class="card">
@@ -17,10 +17,12 @@
                 <label for="slug">Panel address</label>
                 <input id="slug" name="slug" pattern="[a-z][a-z0-9-]{2,39}" maxlength="40" value="{{ old('slug') }}" placeholder="nairobi-boost" required>
                 <small id="addr">{{ $base ? 'Your address: your-name.' . $base : 'Your panel works at ' . url('/panels/your-name') . ' (the owner has not set up a domain for subdomains yet).' }}</small>
-                <label for="tagline">Tagline <span class="muted">(preview only, set it after renting)</span></label>
-                <input id="tagline" maxlength="160" placeholder="Followers & likes in minutes">
+                @if(in_array('branding', $settings['features'], true))
+                <label for="tagline">Tagline</label>
+                <input id="tagline" name="tagline" maxlength="160" value="{{ old('tagline') }}" placeholder="Followers & likes in minutes">
                 <label for="color">Brand colour</label>
-                <input id="color" type="color" value="#2563eb" style="height:46px;padding:4px">
+                <input id="color" name="color" type="color" value="{{ old('color', '#2563eb') }}" style="height:46px;padding:4px">
+                @endif
                 <button>Rent panel · {{ $settings['price'] }} {{ basicControl()->base_currency }}</button>
             </form>
         @else
@@ -30,6 +32,7 @@
     <div class="card">
         <h2>Live preview</h2>
         <p class="muted">This is how your customers will see your panel. It updates as you type.</p>
+        <p><a href="{{ route('rental.preview.public') }}" target="_blank" rel="noopener">Open read-only preview in a new tab</a></p>
         <iframe id="pv" title="Panel preview" src="{{ route('user.panels.preview') }}" style="width:100%;height:520px;border:1px solid #e2e7f0;border-radius:14px;background:#fff"></iframe>
     </div>
 </div>

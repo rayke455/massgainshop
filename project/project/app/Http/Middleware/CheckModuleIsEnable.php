@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Modules\ChildPanel\App\Models\ChildPanel;
 use Symfony\Component\HttpFoundation\Response;
 use Module;
 use Illuminate\Support\Facades\Schema;

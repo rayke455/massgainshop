@@ -49,6 +49,26 @@ class ResolveRentalHost {
 
         $controller = app(RentalStorefrontController::class);
         $path = trim($request->path(), '/');
+        if ($path === 'api/panel/v1' && $request->isMethod('POST') && $panel->allows('accounts')) return $next($request);
+        if (Auth::check() && !Auth::user()->status && $path !== 'logout') {
+            abort(403, 'Your account is suspended. Contact your panel support team.');
+        }
+        if (($path === 'register' || str_starts_with($path, 'register/')) && !$panel->workspace()['registration']) {
+            abort(403, 'Registration is closed on this panel.');
+        }
+        if ($request->isMethod('GET') && in_array($path, ['terms', 'privacy'], true)) {
+            abort_unless($panel->workspace()[$path], 404);
+            return response()->view('rentals.content-page', [
+                'panel' => $panel, 'title' => $path === 'terms' ? 'Terms of service' : 'Privacy policy',
+                'body' => $panel->workspace()[$path],
+            ]);
+        }
+        if ($request->isMethod('GET') && preg_match('#^pages/([a-z0-9]+(?:-[a-z0-9]+)*)$#', $path, $match)) {
+            return app(\App\Http\Controllers\RentalContentController::class)->page($panel, $match[1]);
+        }
+        if ($request->isMethod('GET') && $path === 'faq') {
+            return app(\App\Http\Controllers\RentalContentController::class)->faq($panel);
+        }
         if ($request->isMethod('GET') && ($path === '' || $path === '/')) return response($controller->show($panel->slug));
         if ($request->isMethod('GET') && preg_match('#^track/([a-f0-9-]{36})$#', $path, $match)) return $controller->track($panel->slug, $match[1]);
         if ($request->isMethod('GET') && preg_match('#^pay-status/([a-f0-9-]{36})$#', $path, $match)) {

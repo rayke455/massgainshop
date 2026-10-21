@@ -1,6 +1,6 @@
 .env
 .idea
-vendor
+/vendor
 modules_statuses.json
 /storage/logs
 /assets/upload

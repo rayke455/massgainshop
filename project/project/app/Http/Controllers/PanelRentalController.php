@@ -13,21 +13,44 @@ class PanelRentalController extends Controller {
     public function index() { return view('rentals.manage', ['settings' => PanelRentals::settings(), 'panels' => RentalPanel::where('owner_id', auth()->id())->latest()->get()]); }
     public function store(Request $request) {
         $settings = PanelRentals::settings(); abort_unless($settings['enabled'], 403, 'Panel rentals are not open yet.');
-        $data = $request->validate(['slug' => ['required', 'regex:/^[a-z][a-z0-9-]{2,39}$/', Rule::notIn(['www','admin','api','mail','smtp','ftp','panel','support','billing','app']), 'unique:rental_panels,slug'], 'name' => 'required|string|max:100', 'price' => 'required|numeric']);
+        $data = $request->validate(['slug' => ['required', 'regex:/^[a-z][a-z0-9-]{2,39}$/', Rule::notIn(['www','admin','api','mail','smtp','ftp','panel','support','billing','app']), 'unique:rental_panels,slug'], 'name' => 'required|string|max:100', 'price' => 'required|numeric',
+            'tagline' => 'nullable|string|max:160', 'color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/']]);
         if ((float)$data['price'] !== (float)$settings['price']) throw ValidationException::withMessages(['price' => 'The rental price changed. Refresh and review the new price.']);
         DB::transaction(function () use ($settings, $data) {
             $user = User::lockForUpdate()->findOrFail(auth()->id());
             PanelRentals::charge($user, $settings, 'Panel rental: '.$data['slug']);
             $panel = RentalPanel::create(['owner_id' => $user->id, 'name' => $data['name'], 'slug' => $data['slug'], 'subdomain' => PanelRentals::baseDomain($settings) ? $data['slug'].'.'.PanelRentals::baseDomain($settings) : null, 'domain_token' => Str::random(48), 'status' => 'active', 'features' => $settings['features'], 'expires_at' => now()->addDays($settings['days'])]);
+            if ($panel->allows('branding')) {
+                $panel->update(['tagline' => $data['tagline'] ?? null, 'color' => $data['color'] ?? '#2563eb']);
+            }
             PanelRentals::audit($panel->id, 'user:'.$user->id, 'rented', ['price' => $settings['price'], 'days' => $settings['days']]);
         });
         return back()->with('success', 'Your panel is ready. Open Manage panel to customise it.');
     }
     public function show(int $id) {
         $panel = $this->owned($id);
+        $filters = request()->validate([
+            'customer_search' => 'nullable|string|max:100',
+            'customer_id' => 'nullable|integer|min:1',
+            'order_search' => 'nullable|string|max:100',
+            'order_status' => 'nullable|in:pending,processing,in progress,completed,partial,canceled,refunded',
+        ]);
+        $customerOrders = Order::with('service')->where('rental_panel_id', $panel->id)
+            ->when($filters['order_search'] ?? null, fn($q, $search) => $q->where(function ($match) use ($search) {
+                $match->where('link', 'like', '%'.$search.'%');
+                if (ctype_digit($search)) $match->orWhere('id', $search);
+            }))
+            ->when($filters['customer_id'] ?? null, fn($q, $customerId) => $q->where('user_id', $customerId))
+            ->when($filters['order_status'] ?? null, fn($q, $status) => $q->where('status', $status));
+        $orderStats = Order::where('rental_panel_id', $panel->id)
+            ->selectRaw('status, COUNT(*) as total, COALESCE(SUM(price), 0) as revenue, COALESCE(SUM(rental_earning), 0) as earnings')
+            ->groupBy('status')->orderByDesc('total')->get();
+        $topServices = Order::with('service:id,service_title')->where('rental_panel_id', $panel->id)
+            ->selectRaw('service_id, COUNT(*) as total, COALESCE(SUM(price), 0) as revenue, COALESCE(SUM(rental_earning), 0) as earnings')
+            ->groupBy('service_id')->orderByDesc('total')->take(10)->get();
         $overrides = DB::table('rental_panel_prices')->where('panel_id', $panel->id)->get()->keyBy('service_id');
         $cur = PanelRentals::currency($panel);
-        $services = \App\Models\Service::with('category')->where('service_status', 1)->where('service_type', 'Default')->orderBy('category_id')->get()
+        $services = \App\Models\Service::with('category')->where('service_status', 1)->orderBy('category_id')->get()
             ->each(function ($s) use ($panel, $overrides, $cur) {
                 $s->cost_k = round(PanelRentals::costPerK($s, $panel) * (float) $cur->conversion_rate, 4);
                 $s->own = optional($overrides->get($s->id))->price;
@@ -41,15 +64,39 @@ class PanelRentalController extends Controller {
             'earnings' => (float) auth()->user()->rental_earnings,
             'payouts' => \App\Models\RentalPayout::where('user_id', auth()->id())->latest()->take(10)->get(),
             'requests' => RentalRequest::with('providerOrder', 'service')->where('panel_id', $panel->id)->latest()->paginate(20),
+            'customerOrders' => $customerOrders->latest()->paginate(20, ['*'], 'orders_page')->withQueryString(),
             // Customers with an account on this panel (they sign up on the panel's domain).
             'customers' => \App\Models\User::where('rental_panel_id', $panel->id)
-                ->select('id', 'username', 'email', 'phone_code', 'phone', 'balance', 'created_at')
+                ->when($filters['customer_search'] ?? null, function ($query, $search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('username', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%');
+                    });
+                })
+                ->select('id', 'username', 'email', 'phone_code', 'phone', 'balance', 'status', 'rental_profile', 'created_at')
                 ->selectSub(DB::table('orders')->whereColumn('user_id', 'users.id')->where('rental_panel_id', $panel->id)->selectRaw('count(*)'), 'orders_count')
                 ->selectSub(DB::table('orders')->whereColumn('user_id', 'users.id')->where('rental_panel_id', $panel->id)->selectRaw('coalesce(sum(rental_earning), 0)'), 'earned')
-                ->latest()->take(50)->get(),
+                ->latest()->paginate(25, ['*'], 'customers_page')->withQueryString(),
             'customerTotal' => \App\Models\User::where('rental_panel_id', $panel->id)->count(),
+            'orderTotal' => (clone $customerOrders)->count(),
+            'serviceTotal' => $services->where('hidden_k', false)->count(),
+            'orderStats' => $orderStats,
+            'topServices' => $topServices,
         ]);
     }
+    public function customerStatus(Request $request, int $id, int $customerId) {
+        $panel = $this->owned($id);
+        abort_unless($panel->allows('accounts'), 403);
+        $data = $request->validate(['status' => 'required|boolean']);
+        $customer = User::where('rental_panel_id', $panel->id)->findOrFail($customerId);
+        DB::transaction(function () use ($panel, $customer, $data) {
+            $customer->update(['status' => (bool) $data['status']]);
+            PanelRentals::audit($panel->id, 'user:'.auth()->id(), 'customer_status_updated', [
+                'customer' => $customer->id, 'status' => (bool) $data['status'],
+            ]);
+        });
+        return back()->with('success', $data['status'] ? 'Customer access restored.' : 'Customer access suspended.');
+    }
+
     public function update(Request $request, int $id) {
         $panel = $this->owned($id); abort_unless($panel->available(), 403, 'This panel is inactive.');
         $data = $request->validate([
@@ -57,7 +104,32 @@ class PanelRentalController extends Controller {
             'tagline' => 'nullable|string|max:160', 'color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'whatsapp' => ['nullable', 'regex:/^\+?[0-9 ]{7,20}$/'],
             'currency' => 'nullable|string|exists:currencies,code', 'payment_mode' => 'nullable|in:mpesa,manual',
             'logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048', 'remove_logo' => 'nullable|boolean',
+            'workspace' => 'nullable|array:registration,registration_fields,show_spent,show_orders,announcement,seo_title,seo_description,terms,privacy',
+            'workspace.registration_fields' => 'nullable|array:field_1,field_2,field_3,field_4,field_5',
+            'workspace.registration_fields.*' => 'array:label,required',
+            'workspace.registration_fields.*.label' => 'nullable|string|max:80',
+            'workspace.registration_fields.*.required' => 'nullable|boolean',
+            'workspace.registration' => 'required_with:workspace|boolean',
+            'workspace.show_spent' => 'required_with:workspace|boolean',
+            'workspace.show_orders' => 'required_with:workspace|boolean',
+            'workspace.announcement' => 'nullable|string|max:1000',
+            'workspace.seo_title' => 'nullable|string|max:100',
+            'workspace.seo_description' => 'nullable|string|max:300',
+            'workspace.terms' => 'nullable|string|max:20000',
+            'workspace.privacy' => 'nullable|string|max:20000',
         ]);
+        if (isset($data['workspace'])) {
+            $workspace = $data['workspace'];
+            if (!$panel->allows('accounts')) unset($workspace['registration_fields']);
+            foreach (['registration', 'show_spent', 'show_orders'] as $key) $workspace[$key] = (bool) $workspace[$key];
+            foreach (['announcement', 'seo_title', 'seo_description', 'terms', 'privacy'] as $key) {
+                if (array_key_exists($key, $workspace)) $workspace[$key] = $workspace[$key] ?? '';
+            }
+            if (!$panel->allows('branding')) {
+                foreach (['announcement', 'seo_title', 'seo_description', 'terms', 'privacy'] as $key) unset($workspace[$key]);
+            }
+            $panel->workspace_settings = array_replace($panel->workspace(), $workspace);
+        }
         if ($panel->allows('branding')) {
             $panel->name = $data['name'];
             $panel->tagline = $data['tagline'] ?? null;
@@ -168,9 +240,51 @@ class PanelRentalController extends Controller {
         $panel->expires_at = now()->addDay(); $panel->status = 'active';
         foreach (['name', 'tagline', 'color', 'currency'] as $f) if ($request->filled($f)) $panel->{$f} = $request->input($f);
         if ($request->filled('markup')) $panel->markup = (float) $request->markup;
-        $panel->name = $panel->name ?: 'Your panel';
+        $panel->name = $panel->name ?: 'Mass Panel Shop';
         $panel->setRelation('owner', auth()->user());
         return app(RentalStorefrontController::class)->render($panel, true);
+    }
+
+    /** Public visual preview of the signed-in customer workspace. */
+    public function ownerPreview(Request $request) {
+        $data = $request->validate(['screen' => 'nullable|in:control,content,promotions,support',
+            'order_status' => 'nullable|in:pending,processing,in progress,completed,partial,canceled,refunded']);
+        $panel = new RentalPanel(['name' => 'Mass Panel Shop', 'slug' => 'preview', 'status' => 'active',
+            'expires_at' => now()->addDays(30), 'features' => array_keys(PanelRentals::FEATURES), 'markup' => 20]);
+        $panel->id = 0;
+        $empty = fn() => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
+        $common = ['panel' => $panel, 'ownerPreview' => true];
+        if (($data['screen'] ?? '') === 'support') return response()->view('rentals.support', $common + ['owner' => true, 'tickets' => $empty(), 'selected' => null, 'messages' => collect()]);
+        if (($data['screen'] ?? '') === 'content') return response()->view('rentals.content-manager', $common + ['selected' => null, 'entries' => $empty()]);
+        if (($data['screen'] ?? '') === 'promotions') return response()->view('rentals.promotions', $common + ['promotions' => $empty()]);
+        // Synthetic, unsaved records: the public preview never exposes customer orders.
+        $sampleOrders = collect(['in progress', 'completed', 'pending'])->map(function ($status, $index) {
+            $order = new Order(['service_id' => 101 + $index, 'quantity' => 100 * ($index + 1),
+                'price' => 2 + $index, 'status' => $status, 'link' => 'https://example.com/demo']);
+            $order->forceFill(['id' => 1001 + $index, 'created_at' => now()->subDays($index), 'rental_earning' => 0.4]);
+            $order->setRelation('service', new \App\Models\Service(['service_title' => ['Instagram likes · sample order', 'Facebook followers · sample order', 'YouTube views · sample order'][$index]]));
+            return $order;
+        })->filter(fn($order) => empty($data['order_status']) || $order->status === $data['order_status'])->values();
+        return response()->view('rentals.panel', $common + [
+            'settings' => array_replace(PanelRentals::settings(), ['enabled' => false]),
+            'cur' => (object)['code' => basicControl()->base_currency],
+            'currencies' => \App\Models\Currency::where('status', 1)->get(['code','name']),
+            'services' => collect(), 'mpesaReady' => false, 'earnings' => 0, 'payouts' => collect(),
+            'requests' => $empty(), 'customerOrders' => new \Illuminate\Pagination\LengthAwarePaginator($sampleOrders, $sampleOrders->count(), 25), 'customers' => $empty(),
+            'customerTotal' => 0, 'orderTotal' => 0, 'serviceTotal' => 0,
+            'orderStats' => collect(), 'topServices' => collect(),
+        ]);
+    }
+
+    /** Public visual preview of the signed-in customer workspace. */
+    public function customerPreview(Request $request) {
+        $data = $request->validate(['screen' => 'nullable|in:dashboard,orders,services,funds,support']);
+        $panel = new RentalPanel(['name' => 'Mass Panel Shop', 'status' => 'active', 'expires_at' => now()->addDay(), 'features' => ['branding', 'accounts', 'orders', 'catalogue']]);
+        return response()->view('rentals.customer-workspace', [
+            'panel' => $panel, 'preview' => true, 'screen' => $data['screen'] ?? 'dashboard',
+            'walletBalance' => 0, 'orders' => collect(['total' => 0, 'active' => 0, 'spent' => 0]),
+            'currency' => null, 'recentOrders' => collect(),
+        ]);
     }
 
     public function savePayoutDestination(Request $request) {
@@ -297,7 +411,8 @@ class PanelRentalController extends Controller {
 
     public function admin() {
         abort_unless(PanelRentals::isSuperAdmin(), 403);
-        return view('admin.rentals.index', ['settings' => PanelRentals::settings(), 'panels' => RentalPanel::with('owner:id,username')->latest()->paginate(30)]);
+        return view('admin.rentals.index', ['settings' => PanelRentals::settings(), 'panels' => RentalPanel::with('owner:id,username')->latest()->paginate(30),
+            'audits' => DB::table('rental_audit')->latest('created_at')->limit(30)->get()]);
     }
     public function adminSettings(Request $request) {
         abort_unless(PanelRentals::isSuperAdmin(), 403);

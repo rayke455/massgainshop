@@ -33,6 +33,10 @@ class CheckExpiredDomain extends Command
      */
     public function handle()
     {
+        if (!class_exists('Modules\\ChildPanel\\App\\Models\\ChildPanel')) {
+            $this->warn('ChildPanel module is not installed; skipping expired-domain check.');
+            return self::SUCCESS;
+        }
         $childPanelPrice = basicControl()->child_panel_price;
         $childPanels = ChildPanel::where('status', 1)->expired()->get();
 

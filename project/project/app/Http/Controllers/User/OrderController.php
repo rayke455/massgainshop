@@ -38,6 +38,9 @@ class OrderController extends Controller
 
     public function create(Request $request)
     {
+        if (app()->bound('rental.panel') && !$request->boolean('advanced')) {
+            return app(\App\Http\Controllers\RentalCatalogueController::class)->index($request);
+        }
         try {
             $serviceId = $request->serviceId;
             if (isset($serviceId)) {
@@ -137,13 +140,17 @@ class OrderController extends Controller
 
     public function store(OrderStoreRequest $request)
     {
+        if (app()->bound('rental.panel')) {
+            $panel = app('rental.panel');
+            abort_unless((int) auth()->user()->rental_panel_id === (int) $panel->id && $panel->allows('orders'), 403);
+        }
         DB::beginTransaction();
 
         try {
             $data = $request->validated();
             $service = Service::userRate()->find($request->service);
 
-            if (!$service) {
+            if (!$service || !$service->service_status || (int) $service->category_id !== (int) $data['category']) {
                 DB::rollBack();
                 return response([
                     'status' => 'error',
@@ -325,6 +332,14 @@ class OrderController extends Controller
             )
             ->orderByDesc('id');
 
+        if (app()->bound('rental.panel')) {
+            $panel = app('rental.panel');
+            abort_unless((int) auth()->user()->rental_panel_id === (int) $panel->id && $panel->allows('accounts'), 403);
+            $ordersQuery->where('rental_panel_id', $panel->id);
+            $orders = $ordersQuery->paginate(15)->withQueryString();
+            $currency = $currency ?: \App\Services\PanelRentals::currency($panel);
+            return view('rentals.customer-orders', compact('panel', 'orders', 'currency'));
+        }
         $orders = $ordersQuery->paginate(15);
         return view(template() . 'user.order.index', compact('orders', 'currency'));
     }

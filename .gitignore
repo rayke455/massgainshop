@@ -33,3 +33,14 @@ Thumbs.db
 
 # Local dev tools (cloudflared tunnel)
 /tools/
+
+# Staging & deployment archives
+*.zip
+*.tar
+*.sql
+massfame-production-env.txt
+massfame-fresh.txt
+.deploy-stage/
+.repair-stage*/
+.rea-socpanel-profile/
+**/diagnostic.php

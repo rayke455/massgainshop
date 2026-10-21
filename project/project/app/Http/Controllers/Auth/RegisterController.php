@@ -155,6 +155,9 @@ class RegisterController extends Controller
             ];
         }
 
+        if (\App\Services\PanelRentals::current()) {
+            $rules = array_merge($rules, \App\Services\RentalRegistration::rules(\App\Services\PanelRentals::current()));
+        }
         $validator = Validator::make($data, $rules, [
             'g-recaptcha-response.required' => 'The google recaptcha is required.',
         ]);
@@ -222,6 +225,7 @@ class RegisterController extends Controller
             'email' => $data['email'],
             'country_code' => $data['country_code'] ?? null,
             'rental_panel_id' => \App\Services\PanelRentals::currentId(),   // signed up on a rented panel → that panel's customer
+            'rental_profile' => \App\Services\RentalRegistration::answers(\App\Services\PanelRentals::current(), $data),
             'currency' => $this->signupCurrency($data),
             'phone_code' => $data['phone_code'],
             'phone' => $data['phone'],

@@ -82,6 +82,10 @@ class PanelRentals {
         return \App\Services\Growth::applyVip((float) $service->price, $panel->owner);
     }
 
+    public static function quantityBased(Service $service): bool {
+        return in_array($service->service_type ?: 'Default', Order::QUANTITY_BASED_TYPES, true);
+    }
+
     /** Customer price per 1,000 in the panel currency. Own price if set (never below cost), else markup. */
     public static function pricePerK(Service $service, RentalPanel $panel, ?object $override = null, ?object $cur = null): float {
         $cur ??= self::currency($panel);
@@ -96,7 +100,7 @@ class PanelRentals {
     public static function catalogue(RentalPanel $panel) {
         $overrides = DB::table('rental_panel_prices')->where('panel_id', $panel->id)->get()->keyBy('service_id');
         $cur = self::currency($panel);
-        return Service::with('category.socialMedia')->where('service_status', 1)->where('service_type', 'Default')
+        return Service::with('category.socialMedia')->where('service_status', 1)
             ->whereHas('category', fn($q) => $q->where('status', 1))->orderBy('category_id')->get()
             ->reject(fn($s) => optional($overrides->get($s->id))->hidden)
             ->each(function ($s) use ($panel, $overrides, $cur) {
@@ -134,7 +138,9 @@ class PanelRentals {
 
             $item->paid_amount = $paidKes;
             $item->paid_at = now();
-            $cost = round(self::costPerK($service, $panel) * $item->quantity / 1000, 6);
+            $cost = self::quantityBased($service)
+                ? round(self::costPerK($service, $panel) * $item->quantity / 1000, 6)
+                : round(self::costPerK($service, $panel), 6);
             $item->cost = $cost;
 
             $order = Order::create([
@@ -204,7 +210,9 @@ class PanelRentals {
         $panel = self::panelFor($customer);
         if (!$panel || $order->rental_earning !== null) return;
         $service = Service::find($order->service_id);
-        $cost = round(self::costPerK($service, $panel) * (int) $order->quantity / 1000, 6);
+        $cost = self::quantityBased($service)
+            ? round(self::costPerK($service, $panel) * (int) $order->quantity / 1000, 6)
+            : round(self::costPerK($service, $panel), 6);
         $fee = (float) self::settings()['platform_fee'];
         $earning = round(max(0, (float) $order->price - $cost) * (1 - $fee / 100), 6);
         $order->forceFill(['rental_panel_id' => $panel->id, 'rental_earning' => $earning])->save();

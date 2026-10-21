@@ -1,5 +1,5 @@
 @php
-    $destination = \Illuminate\Support\Facades\DB::table('rental_payout_destinations')->where('user_id', auth()->id())->first();
+    $destination = ($ownerPreview ?? false) ? null : \Illuminate\Support\Facades\DB::table('rental_payout_destinations')->where('user_id', auth()->id())->first();
     $payoutToken = session('rental_payout_token') ?: (string) \Illuminate\Support\Str::uuid();
     session(['rental_payout_token' => $payoutToken]);
 @endphp

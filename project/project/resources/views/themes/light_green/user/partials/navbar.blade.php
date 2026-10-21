@@ -157,6 +157,7 @@
                             </a>
                         </li>
 
+                        @unless(\App\Services\PanelRentals::current())
                         <li>
                             <a class="dropdown-item d-flex align-items-center" href="javascript:void(0)"
                                onclick="showPwa()">
@@ -164,9 +165,10 @@
                                 <span>@lang('Install PWA')</span>
                             </a>
                         </li>
+                        @endunless
 
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="{{ url('faq') }}">
+                            <a class="dropdown-item d-flex align-items-center" href="{{ \App\Services\PanelRentals::current() ? route('rental.support') : url('faq') }}">
                                 <i class="fa-light fa-circle-question need-help-icon"></i>
                                 <span>@lang("Need Help?")</span>
                             </a>

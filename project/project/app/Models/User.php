@@ -61,9 +61,11 @@ class User extends Authenticatable
         'api_token',
         'google_id',
         'rental_panel_id',
+        'rental_profile',
     ];
 
     protected $hidden = [
+        'rental_profile',
         'password',
         'remember_token',
     ];
@@ -72,6 +74,7 @@ class User extends Authenticatable
     public $allusers = [];
 
     protected $casts = [
+        'rental_profile' => 'array',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];

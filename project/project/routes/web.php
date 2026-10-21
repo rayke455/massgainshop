@@ -228,7 +228,17 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::get('snippe/status/{trx_id}', [\App\Http\Controllers\SnippeController::class, 'status'])->middleware(['auth', 'throttle:40,1'])->name('snippe.status');
 
 
+    Route::get('rental-preview', [\App\Http\Controllers\PanelRentalController::class, 'preview'])->middleware('throttle:60,1')->name('rental.preview.public');
+Route::get('rental-preview/customer', [\App\Http\Controllers\PanelRentalController::class, 'customerPreview'])->middleware('throttle:60,1')->name('rental.preview.customer');
+Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController::class, 'ownerPreview'])->middleware('throttle:60,1')->name('rental.preview.alias');
     Route::middleware(['auth', 'userCheck'])->prefix('user/panels')->name('user.panels.')->group(function () {
+        Route::get('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'index'])->whereNumber('panelId')->name('promotions');
+        Route::post('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('promotions.store');
+        Route::post('/{panelId}/promotions/{promotionId}/status', [\App\Http\Controllers\RentalPromotionController::class, 'status'])->whereNumber(['panelId', 'promotionId'])->name('promotions.status');
+        Route::get('/{panelId}/content', [\App\Http\Controllers\RentalContentController::class, 'index'])->whereNumber('panelId')->name('content');
+        Route::post('/{panelId}/content', [\App\Http\Controllers\RentalContentController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('content.store');
+        Route::get('/{panelId}/support', [\App\Http\Controllers\RentalSupportController::class, 'index'])->whereNumber('panelId')->name('support');
+        Route::post('/{panelId}/support', [\App\Http\Controllers\RentalSupportController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('support.store');
         Route::get('/', [\App\Http\Controllers\PanelRentalController::class, 'index'])->name('index');
         Route::get('/preview', [\App\Http\Controllers\PanelRentalController::class, 'preview'])->middleware('throttle:60,1')->name('preview');
         Route::post('/payout-destination', [\App\Http\Controllers\PanelRentalController::class, 'savePayoutDestination'])->middleware('throttle:5,1')->name('destination');
@@ -238,11 +248,21 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
         Route::post('/', [\App\Http\Controllers\PanelRentalController::class, 'store'])->middleware('throttle:5,1')->name('store');
         Route::get('/{id}', [\App\Http\Controllers\PanelRentalController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/{id}/settings', [\App\Http\Controllers\PanelRentalController::class, 'update'])->whereNumber('id')->name('update');
+        Route::post('/{id}/customers/{customerId}/status', [\App\Http\Controllers\PanelRentalController::class, 'customerStatus'])->whereNumber('id')->whereNumber('customerId')->middleware('throttle:20,1')->name('customer.status');
         Route::post('/{id}/verify', [\App\Http\Controllers\PanelRentalController::class, 'verify'])->middleware('throttle:3,1')->name('verify');
         Route::post('/{id}/renew', [\App\Http\Controllers\PanelRentalController::class, 'renew'])->middleware('throttle:2,1')->block(10, 10)->name('renew');
         Route::post('/{id}/requests/{requestId}', [\App\Http\Controllers\PanelRentalController::class, 'linkOrder'])->name('link');
     });
+    Route::middleware(['auth', 'userCheck'])->group(function () {
+        Route::get('/user/panel-support', [\App\Http\Controllers\RentalSupportController::class, 'index'])->name('rental.support');
+        Route::get('/user/panel-api', [\App\Http\Controllers\RentalApiController::class, 'settings'])->name('rental.api.settings');
+        Route::post('/user/panel-api', [\App\Http\Controllers\RentalApiController::class, 'rotate'])->middleware('throttle:5,1')->name('rental.api.rotate');
+        Route::post('/user/panel-promotion', [\App\Http\Controllers\RentalPromotionController::class, 'redeem'])->middleware('throttle:5,1')->name('rental.promotion.redeem');
+        Route::post('/user/panel-support', [\App\Http\Controllers\RentalSupportController::class, 'store'])->middleware('throttle:10,1')->name('rental.support.store');
+    });
     Route::get('/panels/{slug}', [\App\Http\Controllers\RentalStorefrontController::class, 'show'])->name('panels.show');
+    Route::get('/panels/{slug}/pages/{pageSlug}', [\App\Http\Controllers\RentalContentController::class, 'publicPage'])->name('panels.page');
+    Route::get('/panels/{slug}/faq', [\App\Http\Controllers\RentalContentController::class, 'publicFaq'])->name('panels.faq');
     Route::post('/panels/{slug}/panel-order', [\App\Http\Controllers\RentalStorefrontController::class, 'order'])->middleware('throttle:5,1')->name('panels.order');
     Route::get('/panels/{slug}/track/{token}', [\App\Http\Controllers\RentalStorefrontController::class, 'track'])->middleware('throttle:30,1')->name('panels.track');
     Route::get('/panels/{slug}/pay-status/{token}', [\App\Http\Controllers\RentalStorefrontController::class, 'payStatus'])->middleware('throttle:40,1')->name('panels.paystatus');

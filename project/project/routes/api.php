@@ -20,3 +20,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('v2', [ApiController::class, 'apiV2'])->name('userApiKey');
+Route::post('panel/v1', [\App\Http\Controllers\RentalApiController::class, 'dispatch'])->middleware('throttle:60,1')->name('rental.api.dispatch');

@@ -33,6 +33,7 @@ class ApiController extends Controller
         }
 
         $user = User::select('id', 'api_token', 'status', 'balance')
+            ->whereNull('rental_panel_id')
             ->where('api_token', $request->key)
             ->first();
 

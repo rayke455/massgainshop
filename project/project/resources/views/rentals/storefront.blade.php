@@ -1,5 +1,5 @@
 @php
-    $brand = $panel->allows('branding') ? $panel->name : __('Social services');
+    $brand = $panel->allows('branding') ? $panel->name : 'Mass Panel Shop';
     $logo = \App\Services\PanelRentals::logoUrl($panel);
     $color = $panel->color ?: '#2563eb';
     $money = fn($v) => number_format((float) $v, (float) $v < 1 ? 4 : 2) . ' ' . $cur->code;
@@ -10,8 +10,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $brand }}{{ $panel->tagline ? ' · ' . $panel->tagline : '' }}</title>
-    <meta name="description" content="{{ $panel->tagline ?: __('Followers, likes and views delivered fast.') }}">
+    <title>{{ $panel->workspace()['seo_title'] ?: $brand }}</title>
+    <meta name="description" content="{{ $panel->workspace()['seo_description'] ?: ($panel->tagline ?: __('Followers, likes and views delivered fast.')) }}">
     @if($preview)<meta name="robots" content="noindex">@endif
     @if($logo)<link rel="icon" href="{{ $logo }}">@endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,6 +69,12 @@
     </style>
 </head>
 <body>
+@if(!$preview && request()->attributes->get('rental_host'))
+<nav class="ribbon" aria-label="Panel policies">
+    @if($panel->workspace()['terms'])<a href="/terms" style="color:inherit;margin-right:16px">Terms of service</a>@endif
+    @if($panel->workspace()['privacy'])<a href="/privacy" style="color:inherit">Privacy policy</a>@endif
+</nav>
+@endif
 @if($preview)<div class="ribbon">PREVIEW · this is how your panel will look · ordering is disabled</div>@endif
 <header>
     <div class="wrap">
@@ -82,7 +88,7 @@
                     <a class="btn" href="{{ url('/user/dashboard') }}">{{ __('Dashboard') }}</a>
                 @else
                     <a class="btn btn-ghost" href="{{ $zkOwnHost ? url('/login') : '#' }}">{{ __('Log in') }}</a>
-                    <a class="btn" href="{{ $zkOwnHost ? url('/register') : '#' }}">{{ __('Create account') }}</a>
+                    @if($panel->workspace()['registration'])<a class="btn" href="{{ $zkOwnHost ? url('/register') : '#' }}">{{ __('Create account') }}</a>@endif
                 @endif
             @else
                 <a class="btn" href="#order">{{ __('Order now') }}</a>
@@ -116,13 +122,13 @@
             <div id="list">
                 @forelse($all as $s)
                     <div class="svc" tabindex="0" role="button" data-id="{{ $s->id }}" data-p="{{ optional(optional($s->category)->socialMedia)->name ?: 'Other' }}"
-                         data-price="{{ $s->panel_price }}" data-min="{{ $s->min_amount }}" data-max="{{ $s->max_amount }}"
+                         data-price="{{ $s->panel_price }}" data-quantity-based="{{ \App\Services\PanelRentals::quantityBased($s) ? '1' : '0' }}" data-min="{{ $s->min_amount }}" data-max="{{ $s->max_amount }}"
                          data-name="{{ strtolower(\App\Services\SmartImport::cleanName($s->service_title)) }}">
                         <div class="nm">
                             <strong>{{ \App\Services\SmartImport::cleanName($s->service_title) }}</strong>
                             <span>{{ __('Min') }} {{ number_format($s->min_amount) }} · {{ __('Max') }} {{ number_format($s->max_amount) }}</span>
                         </div>
-                        <div class="pr">{{ $money($s->panel_price) }} <small>/ 1k</small></div>
+                        <div class="pr">{{ $money($s->panel_price) }} <small>/ {{ \App\Services\PanelRentals::quantityBased($s) ? '1k' : 'item' }}</small></div>
                     </div>
                 @empty
                     <p>{{ __('No services are available right now.') }}</p>
@@ -165,7 +171,7 @@
     @endif
 </main>
 
-<footer>© {{ date('Y') }} {{ $brand }}</footer>
+<footer>@include('rentals.content-links') © {{ date('Y') }} {{ $brand }}</footer>
 @if($panel->whatsapp)
     <a class="wa" href="https://wa.me/{{ $panel->whatsapp }}" target="_blank" rel="noopener" aria-label="WhatsApp">
         <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path fill="#fff" d="M16.04 3C9.4 3 4 8.4 4 15.04c0 2.12.55 4.18 1.6 6L4 29l8.17-1.57a12 12 0 0 0 3.87.64C22.68 28.07 28 22.67 28 16.03 28 9.4 22.68 3 16.04 3zm5.44 15.5c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.47 1.07 2.88 1.21 3.08.15.2 2.1 3.2 5.08 4.49 2.98 1.29 2.98.86 3.52.81.54-.05 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg>
@@ -192,7 +198,9 @@
             if (!s) { total.textContent = '0.00 ' + cur; limits.textContent = ''; return; }
             qty.min = s.dataset.min; qty.max = s.dataset.max;
             limits.textContent = '(' + Number(s.dataset.min).toLocaleString() + '–' + Number(s.dataset.max).toLocaleString() + ')';
-            const t = Number(s.dataset.price) * (Number(qty.value) || 0) / 1000;
+            const t = s.dataset.quantityBased === '1'
+                ? Number(s.dataset.price) * (Number(qty.value) || 0) / 1000
+                : Number(s.dataset.price);
             total.textContent = t.toFixed(2) + ' ' + cur;
         }
         list.forEach(el => {

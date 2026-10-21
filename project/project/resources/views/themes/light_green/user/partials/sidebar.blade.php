@@ -54,6 +54,7 @@
             <a class="zk-side__link" href="{{ route('user.panels.index') }}"><i class="fa-regular fa-store"></i><span>@lang('Rent a panel')</span></a>
             @endunless
             @if($zkPanel)
+                <a class="zk-side__link" href="{{ route('rental.support') }}"><i class="fa-regular fa-headset"></i><span>@lang('Support')</span></a>
                 @if($zkPanel->whatsapp)
                     <a class="zk-side__link" href="https://wa.me/{{ $zkPanel->whatsapp }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i><span>@lang('Support (WhatsApp)')</span></a>
                 @endif

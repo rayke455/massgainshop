@@ -144,6 +144,13 @@ class HomeController extends Controller
                 ->take(5)
                 ->get(['id', 'service_id', 'link', 'quantity', 'price', 'status', 'created_at']);
 
+            // A rented panel gets its own customer workspace. The main Mass Fame Shop
+            // dashboard remains unchanged for platform customers and administrators.
+            if (app()->bound('rental.panel') && (int) $this->user->rental_panel_id === (int) app('rental.panel')->id) {
+                $data['panel'] = app('rental.panel');
+                return view('rentals.customer-workspace', $data, compact('transactions', 'currency'));
+            }
+
             return view(template() . 'user.dashboard', $data, compact('transactions', 'currency'));
         } catch (\Exception $exception) {
             report($exception);
