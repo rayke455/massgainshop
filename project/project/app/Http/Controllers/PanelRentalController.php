@@ -54,7 +54,7 @@ class PanelRentalController extends Controller {
             ->each(function ($s) use ($panel, $overrides, $cur) {
                 $s->cost_k = round(PanelRentals::costPerK($s, $panel) * (float) $cur->conversion_rate, 4);
                 $s->own = optional($overrides->get($s->id))->price;
-                $s->hidden_k = (bool) optional($overrides->get($s->id))->hidden;
+                $s->hidden_k = (bool) optional($overrides->get($s->id))->hidden || !PanelRentals::serviceImported($panel, (int) $s->id);
                 $s->panel_price = PanelRentals::pricePerK($s, $panel, $overrides->get($s->id), $cur);
             });
         return view('rentals.panel', [
@@ -247,13 +247,14 @@ class PanelRentalController extends Controller {
 
     /** Public visual preview of the signed-in customer workspace. */
     public function ownerPreview(Request $request) {
-        $data = $request->validate(['screen' => 'nullable|in:control,content,promotions,support',
+        $data = $request->validate(['screen' => 'nullable|in:control,content,promotions,support,landing',
             'order_status' => 'nullable|in:pending,processing,in progress,completed,partial,canceled,refunded']);
         $panel = new RentalPanel(['name' => 'Mass Panel Shop', 'slug' => 'preview', 'status' => 'active',
             'expires_at' => now()->addDays(30), 'features' => array_keys(PanelRentals::FEATURES), 'markup' => 20]);
         $panel->id = 0;
         $empty = fn() => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
         $common = ['panel' => $panel, 'ownerPreview' => true];
+        if (($data['screen'] ?? '') === 'landing') return response()->view('rentals.landing-editor', $common + ['draft' => \App\Services\RentalLanding::starter()]);
         if (($data['screen'] ?? '') === 'support') return response()->view('rentals.support', $common + ['owner' => true, 'tickets' => $empty(), 'selected' => null, 'messages' => collect()]);
         if (($data['screen'] ?? '') === 'content') return response()->view('rentals.content-manager', $common + ['selected' => null, 'entries' => $empty()]);
         if (($data['screen'] ?? '') === 'promotions') return response()->view('rentals.promotions', $common + ['promotions' => $empty()]);

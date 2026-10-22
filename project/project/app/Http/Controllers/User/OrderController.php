@@ -44,7 +44,9 @@ class OrderController extends Controller
         try {
             $serviceId = $request->serviceId;
             if (isset($serviceId)) {
-                $data['selectService'] = Service::where('service_status', 1)->userRate()->with('category', 'category.socialMedia')->find($serviceId);
+                $data['selectService'] = Service::where('service_status', 1)
+                    ->whereNotIn('id', \App\Services\PanelRentals::hiddenIds(auth()->user()))
+                    ->userRate()->with('category', 'category.socialMedia')->find($serviceId);
             } else {
                 $data['selectService'] = null;
             }
@@ -159,6 +161,8 @@ class OrderController extends Controller
             }
 
             $quantity = $request->quantity ?? 0;
+            // The catalogue, not a client-supplied value, determines the provider order type.
+            $data['order_type'] = $service->service_type;
 
             if ($service->drip_feed == 1 && !isset($request->drip_feed)) {
                 $quantity = $request->quantity * ($request->runs ?? 1);
@@ -311,6 +315,11 @@ class OrderController extends Controller
 
     public function index(Request $request, $status = null)
     {
+        if (app()->bound('rental.panel')) {
+            $request->validate(['q' => 'nullable|string|max:100', 'order_id' => 'nullable|integer|min:1',
+                'status' => 'nullable|in:processing,in progress,pending,canceled,partial,completed,refunded']);
+            abort_if($status !== null && !in_array($status, ['processing','in progress','pending','canceled','partial','completed','refunded'], true), 404);
+        }
         $search = $request->all();
         $currency = Currency::where('code', auth()->user()->currency)->first();
 
@@ -336,9 +345,15 @@ class OrderController extends Controller
             $panel = app('rental.panel');
             abort_unless((int) auth()->user()->rental_panel_id === (int) $panel->id && $panel->allows('accounts'), 403);
             $ordersQuery->where('rental_panel_id', $panel->id);
+            $ordersQuery->when($request->filled('q'), fn($query) => $query->where(function ($match) use ($request) {
+                $term = (string) $request->input('q');
+                $match->where('link', 'like', '%'.$term.'%');
+                if (ctype_digit($term)) $match->orWhere('id', $term);
+            }));
             $orders = $ordersQuery->paginate(15)->withQueryString();
             $currency = $currency ?: \App\Services\PanelRentals::currency($panel);
-            return view('rentals.customer-orders', compact('panel', 'orders', 'currency'));
+            $activeStatus = $status ?? $request->input('status', '');
+            return view('rentals.customer-orders', compact('panel', 'orders', 'currency', 'activeStatus'));
         }
         $orders = $ordersQuery->paginate(15);
         return view(template() . 'user.order.index', compact('orders', 'currency'));

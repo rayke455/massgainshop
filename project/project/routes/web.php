@@ -232,6 +232,8 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
 Route::get('rental-preview/customer', [\App\Http\Controllers\PanelRentalController::class, 'customerPreview'])->middleware('throttle:60,1')->name('rental.preview.customer');
 Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController::class, 'ownerPreview'])->middleware('throttle:60,1')->name('rental.preview.alias');
     Route::middleware(['auth', 'userCheck'])->prefix('user/panels')->name('user.panels.')->group(function () {
+        Route::get('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'index'])->whereNumber('panelId')->name('landing');
+        Route::post('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('landing.store');
         Route::get('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'index'])->whereNumber('panelId')->name('promotions');
         Route::post('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('promotions.store');
         Route::post('/{panelId}/promotions/{promotionId}/status', [\App\Http\Controllers\RentalPromotionController::class, 'status'])->whereNumber(['panelId', 'promotionId'])->name('promotions.status');
@@ -244,6 +246,8 @@ Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController:
         Route::post('/payout-destination', [\App\Http\Controllers\PanelRentalController::class, 'savePayoutDestination'])->middleware('throttle:5,1')->name('destination');
         Route::post('/withdraw', [\App\Http\Controllers\PanelRentalController::class, 'withdraw'])->middleware('throttle:5,1')->block(10, 10)->name('withdraw');
         Route::post('/earnings-to-wallet', [\App\Http\Controllers\PanelRentalController::class, 'earningsToWallet'])->middleware('throttle:10,1')->name('towallet');
+        Route::get('/{id}/services/import', [\App\Http\Controllers\RentalServiceImportController::class, 'index'])->whereNumber('id')->name('services.import');
+        Route::post('/{id}/services/import', [\App\Http\Controllers\RentalServiceImportController::class, 'store'])->whereNumber('id')->middleware('throttle:20,1')->name('services.import.store');
         Route::post('/{id}/prices', [\App\Http\Controllers\PanelRentalController::class, 'prices'])->whereNumber('id')->middleware('throttle:20,1')->name('prices');
         Route::post('/', [\App\Http\Controllers\PanelRentalController::class, 'store'])->middleware('throttle:5,1')->name('store');
         Route::get('/{id}', [\App\Http\Controllers\PanelRentalController::class, 'show'])->whereNumber('id')->name('show');

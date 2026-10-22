@@ -4,6 +4,16 @@
     $color = $panel->color ?: '#2563eb';
     $money = fn($v) => number_format((float) $v, (float) $v < 1 ? 4 : 2) . ' ' . $cur->code;
     $all = $groups->flatten(1);
+    $shopping = $shopping ?? false;
+    $shopUrl = request()->fullUrlWithQuery(['shop' => 1]);
+    $landingUrl = request()->fullUrlWithoutQuery(['shop']);
+    $previewAuth = $preview && in_array(request('account'), ['login', 'register'], true) ? request('account') : null;
+    $accountHost = $panel->custom_domain && $panel->domain_verified_at && $panel->allows('custom_domain') ? $panel->custom_domain : $panel->subdomain;
+    $accountBase = request()->attributes->get('rental_host') ? url('/') : ($accountHost ? 'https://'.$accountHost : null);
+    $loginUrl = $preview ? request()->fullUrlWithQuery(['account' => 'login', 'shop' => null]) : ($accountBase ? $accountBase.'/login' : null);
+    $registerUrl = $preview ? request()->fullUrlWithQuery(['account' => 'register', 'shop' => null]) : ($accountBase ? $accountBase.'/register' : null);
+    $landingUrl = request()->fullUrlWithoutQuery(['shop', 'account']);
+    $shopUrl = $landingUrl.(str_contains($landingUrl, '?') ? '&' : '?').'shop=1';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +76,7 @@
         header .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         header .wrap > .btn { flex: 0 0 auto; }
         @media(max-width:480px){header .wrap{height:auto;min-height:68px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}.svc{flex-wrap:wrap}.svc .pr{white-space:normal}.total{flex-wrap:wrap}.card{min-width:0}.hero h1{overflow-wrap:anywhere}}
+        .hero-layout{display:grid;grid-template-columns:1.2fr 1fr;gap:42px;align-items:center}.hero-label{text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:800;color:var(--brand);margin-bottom:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}.hero-steps{background:#fff;border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 20px 60px #1628460b}.hero-steps h2{font-size:19px;margin:0 0 16px}.hero-step{display:flex;gap:14px;padding:15px 0;border-top:1px solid var(--line)}.hero-step b{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:color-mix(in srgb,var(--brand) 12%,white);color:var(--brand);flex:none}.hero-step strong{display:block}.hero-step p{font-size:13px;margin:3px 0 0}.service-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--brand) 9%,white);color:var(--brand);flex:none}.service-icon svg{width:21px;height:21px}.guest-label{display:inline-block;color:var(--brand);font-size:12px;font-weight:800;margin-bottom:10px}html{scroll-behavior:smooth;scroll-padding-top:110px}.btn:focus-visible,.svc:focus-visible{outline:3px solid var(--brand);outline-offset:3px}@media(max-width:760px){.hero-layout{grid-template-columns:1fr;gap:24px}.hero{padding:32px 0}.hero-steps{padding:18px}.brand{font-size:16px}header nav .btn{font-size:12px;padding:9px 11px}.hero-actions .btn{flex:1}.svc .nm strong{white-space:normal}.hero h1{font-size:36px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
     </style>
 </head>
 <body>
@@ -78,42 +89,69 @@
 @if($preview)<div class="ribbon">PREVIEW · this is how your panel will look · ordering is disabled</div>@endif
 <header>
     <div class="wrap">
-        <a class="brand" href="{{ $base ?: '/' }}">
+        <a class="brand" href="{{ $landingUrl }}">
             @if($logo)<img src="{{ $logo }}" alt="{{ $brand }}">@else<span class="mark">{{ strtoupper(mb_substr($brand, 0, 1)) }}</span>{{ $brand }}@endif
         </a>
         @php $zkOwnHost = request()->attributes->get('rental_host'); /* account links only work on the panel's own domain */ @endphp
         <nav style="display:flex;gap:8px;align-items:center">
-            @if($panel->allows('accounts'))
-                @if(auth()->check() && $zkOwnHost)
+            @if($panel->allows('accounts') && $loginUrl)
+                @if(!$preview && auth()->check() && $zkOwnHost)
                     <a class="btn" href="{{ url('/user/dashboard') }}">{{ __('Dashboard') }}</a>
                 @else
-                    <a class="btn btn-ghost" href="{{ $zkOwnHost ? url('/login') : '#' }}">{{ __('Log in') }}</a>
-                    @if($panel->workspace()['registration'])<a class="btn" href="{{ $zkOwnHost ? url('/register') : '#' }}">{{ __('Create account') }}</a>@endif
+                    <a class="btn btn-ghost" href="{{ $loginUrl }}">{{ __('Sign in') }}</a>
+                    @if($panel->workspace()['registration'])<a class="btn" href="{{ $registerUrl }}">{{ __('Sign up') }}</a>@endif
                 @endif
             @else
-                <a class="btn" href="#order">{{ __('Order now') }}</a>
+                <a class="btn" href="{{ $shopUrl }}">{{ __('Order as guest') }}</a>
             @endif
         </nav>
     </div>
 </header>
 
+@if($previewAuth)
+<main class="wrap" style="padding-top:40px;padding-bottom:40px">
+    <section class="card" style="max-width:440px;margin:auto">
+        <a href="{{ $landingUrl }}">← Back to home</a>
+        <h1>{{ $previewAuth === 'register' ? __('Create your account') : __('Welcome back') }}</h1>
+        <p class="note">Account preview only. Sign in and registration are available on your published panel domain.</p>
+        <fieldset disabled style="border:0;padding:0;margin:0">
+            @if($previewAuth === 'register')<label for="preview-name">Name</label><input id="preview-name" type="text">@endif
+            <label for="preview-email">Email</label><input id="preview-email" type="email">
+            <label for="preview-password">Password</label><input id="preview-password" type="password">
+            <button class="btn" disabled style="width:100%;margin-top:20px">{{ $previewAuth === 'register' ? __('Sign up') : __('Sign in') }}</button>
+        </fieldset>
+        <p class="note">Prefer not to create an account? <a href="{{ $shopUrl }}">Order as guest</a></p>
+    </section>
+</main>
+@endif
+@if(!$shopping && !$previewAuth)
+@if($panel->allows('branding') && !empty($panel->workspace()['landing_published']))
+<iframe title="{{ $brand }} landing page" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ \App\Services\RentalLanding::document($panel->workspace()['landing_published']) }}" style="display:block;width:100%;height:75vh;min-height:560px;border:0"></iframe>
+<div class="wrap hero-actions">@if($panel->allows('orders'))<a class="btn" href="{{ $shopUrl }}">Order as guest ↗</a>@endif<a class="btn btn-ghost" href="{{ $shopUrl }}">Explore services</a></div>
+@else
 <section class="hero">
-    <div class="wrap">
-        <h1>{{ $panel->tagline ?: __('Grow your social media, fast.') }}</h1>
-        <p>{{ __('Followers, likes, views and more. Paste your link, pay and watch it start in minutes. No password needed.') }}</p>
+    <div class="wrap hero-layout"><div>
+        <div class="hero-label">{{ $brand }} · {{ __('Your next step in social growth') }}</div>
+        <h1>{{ $panel->tagline ?: __('Your audience. Your next chapter.') }}</h1>
+        <p>{{ __('Explore services for your favourite platforms. Choose your service, review the price and order without creating an account.') }}</p>
+        <div class="hero-actions">@if($panel->allows('orders'))<a class="btn" href="{{ $shopUrl }}">{{ __('Order as guest') }} ↗</a>@endif<a class="btn btn-ghost" href="{{ $shopUrl }}">{{ __('Explore services') }}</a></div>
         <ul class="ticks">
-            <li>{{ __('Instant start') }}</li><li>{{ __('No password needed') }}</li>
+            <li>{{ __('No account required') }}</li><li>{{ __('No social password needed') }}</li>
             <li>{{ $mpesa ? __('Pay with M-Pesa') : __('Secure ordering') }}</li><li>{{ __('Live order tracking') }}</li>
         </ul>
-    </div>
+    </div><aside class="hero-steps" aria-label="How guest ordering works"><h2>{{ __('A simple way to get started') }}</h2><div class="hero-step"><b>1</b><div><strong>{{ __('Find your service') }}</strong><p>{{ __('Browse platforms and compare prices.') }}</p></div></div><div class="hero-step"><b>2</b><div><strong>{{ __('Add your link') }}</strong><p>{{ __('Choose a quantity and enter your contact details.') }}</p></div></div><div class="hero-step"><b>3</b><div><strong>{{ __('Confirm and track') }}</strong><p>{{ $mpesa ? __('Pay through M-Pesa and keep your private tracking link.') : __('Send your request and keep your private tracking link.') }}</p></div></div></aside></div>
 </section>
+@endif
+@endif
 
+@if($shopping)
 <main class="wrap">
+    <div style="padding-top:24px"><a href="{{ $landingUrl }}">← {{ __('Back to home') }}</a><h1>{{ __('Choose your service') }}</h1><p class="note">{{ __('Browse services and place your order. No account required.') }}</p></div>
     @if(!$panel->allows('catalogue'))
         <div class="card" style="margin:28px 0">{{ __('The service catalogue is currently unavailable.') }}</div>
     @else
     <div class="grid">
-        <section aria-label="{{ __('Services') }}">
+        <section id="services" aria-label="{{ __('Services') }}">
             <div class="tabs" role="tablist">
                 <button type="button" class="tab on" data-p="">{{ __('All') }}</button>
                 @foreach($groups->keys() as $platform)<button type="button" class="tab" data-p="{{ $platform }}">{{ $platform }}</button>@endforeach
@@ -124,7 +162,7 @@
                     <div class="svc" tabindex="0" role="button" data-id="{{ $s->id }}" data-p="{{ optional(optional($s->category)->socialMedia)->name ?: 'Other' }}"
                          data-price="{{ $s->panel_price }}" data-quantity-based="{{ \App\Services\PanelRentals::quantityBased($s) ? '1' : '0' }}" data-min="{{ $s->min_amount }}" data-max="{{ $s->max_amount }}"
                          data-name="{{ strtolower(\App\Services\SmartImport::cleanName($s->service_title)) }}">
-                        <div class="nm">
+                        <span class="service-icon">@include('rentals.order-platform-icon', ['title' => optional(optional($s->category)->socialMedia)->name ?: 'Other'])</span><div class="nm">
                             <strong>{{ \App\Services\SmartImport::cleanName($s->service_title) }}</strong>
                             <span>{{ __('Min') }} {{ number_format($s->min_amount) }} · {{ __('Max') }} {{ number_format($s->max_amount) }}</span>
                         </div>
@@ -140,7 +178,9 @@
         <aside class="order" id="order">
             <form class="card" method="post" action="{{ $preview ? '#' : $base . '/panel-order' }}" id="orderForm">
                 @csrf
+                <span class="guest-label">{{ __('GUEST CHECKOUT · NO SIGN-IN NEEDED') }}</span>
                 <h2 style="margin:0 0 4px;font-size:20px">{{ __('Place your order') }}</h2>
+                @if($panel->payment_mode === 'mpesa' && !$mpesa)<div class="alert">{{ __('M-Pesa payments are temporarily unavailable. Please contact this panel’s support before ordering.') }}</div>@endif
                 @if(isset($errors) && $errors->any())<div class="alert" role="alert">@foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>@endif
                 <label for="service_id">{{ __('Service') }}</label>
                 <select name="service_id" id="service_id" required>
@@ -160,7 +200,7 @@
                     <input type="tel" name="phone" id="phone" maxlength="20" required placeholder="0712 345 678" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}">
                 @endif
                 <div class="total"><span>{{ __('Total') }}</span><strong id="total">0.00 {{ $cur->code }}</strong></div>
-                <button class="btn" style="width:100%;margin-top:10px" type="submit" @disabled($preview)>
+                <button class="btn" style="width:100%;margin-top:10px" type="submit" @disabled($preview || ($panel->payment_mode === 'mpesa' && !$mpesa))>
                     {{ $preview ? __('Ordering is disabled in preview') : ($mpesa ? __('Pay with M-Pesa') : __('Send order request')) }}
                 </button>
                 <p class="note" style="margin:10px 0 0">{{ $mpesa ? __('You will get an M-Pesa prompt on your phone. Your order starts as soon as you pay.') : __('No payment is taken here. We will contact you to confirm and collect payment.') }}</p>
@@ -170,6 +210,7 @@
     </div>
     @endif
 </main>
+@endif
 
 <footer>@include('rentals.content-links') © {{ date('Y') }} {{ $brand }}</footer>
 @if($panel->whatsapp)
@@ -177,6 +218,7 @@
         <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path fill="#fff" d="M16.04 3C9.4 3 4 8.4 4 15.04c0 2.12.55 4.18 1.6 6L4 29l8.17-1.57a12 12 0 0 0 3.87.64C22.68 28.07 28 22.67 28 16.03 28 9.4 22.68 3 16.04 3zm5.44 15.5c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.47 1.07 2.88 1.21 3.08.15.2 2.1 3.2 5.08 4.49 2.98 1.29 2.98.86 3.52.81.54-.05 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg>
     </a>
 @endif
+@if($shopping)
 <script>
     (function () {
         const cur = @json($cur->code);
@@ -193,6 +235,7 @@
         document.getElementById('q')?.addEventListener('input', filter);
         function current() { return list.find(el => el.dataset.id === sel?.value); }
         function update() {
+            if (!total || !limits || !qty) return;
             const s = current();
             list.forEach(el => el.classList.toggle('on', el === s));
             if (!s) { total.textContent = '0.00 ' + cur; limits.textContent = ''; return; }
@@ -211,5 +254,6 @@
         update();
     })();
 </script>
+@endif
 </body>
 </html>

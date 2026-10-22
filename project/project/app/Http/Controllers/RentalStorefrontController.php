@@ -18,9 +18,12 @@ class RentalStorefrontController extends Controller {
 
     /** Storefront with the given panel's data; $preview disables ordering and shows a ribbon. */
     public function render(RentalPanel $panel, bool $preview) {
-        $services = $panel->allows('catalogue') ? PanelRentals::catalogue($panel) : collect();
-        return view('rentals.storefront', [
-            'panel' => $panel, 'preview' => $preview, 'cur' => PanelRentals::currency($panel),
+        $shopping = request()->boolean('shop') || (session()->has('errors'));
+        if ($shopping) request()->validate(['network' => 'nullable|string|max:100', 'category' => 'nullable|integer|min:1', 'service' => 'nullable|integer|min:1', 'q' => 'nullable|string|max:100']);
+        $services = $shopping && $panel->allows('catalogue') ? PanelRentals::catalogue($panel) : collect();
+        if ($shopping && request()->filled('service')) abort_unless($services->contains('id', (int) request('service')), 404);
+        return view($shopping ? 'rentals.guest-order' : 'rentals.storefront', [
+            'panel' => $panel, 'preview' => $preview, 'shopping' => $shopping, 'cur' => PanelRentals::currency($panel),
             'groups' => $services->groupBy(fn($s) => optional(optional($s->category)->socialMedia)->name ?: 'Other'),
             'mpesa' => $panel->payment_mode === 'mpesa' && (new MpesaService())->ready(),
             'base' => $this->base($panel),
@@ -30,6 +33,9 @@ class RentalStorefrontController extends Controller {
     public function order(Request $request, string $slug) {
         $panel = $this->panel($slug); abort_unless($panel->allows('orders') && $panel->allows('catalogue'), 403);
         $useMpesa = $panel->payment_mode === 'mpesa' && (new MpesaService())->ready();
+        if ($panel->payment_mode === 'mpesa' && !$useMpesa) {
+            return back()->withInput()->withErrors(['payment' => 'M-Pesa payments are temporarily unavailable. Please contact panel support.']);
+        }
         $data = $request->validate([
             'name' => 'required|string|max:100', 'email' => 'required|email|max:255', 'service_id' => 'required|integer',
             'quantity' => 'required|integer|min:1|max:2147483647', 'link' => 'required|url:http,https|max:2048',

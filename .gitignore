@@ -45,3 +45,5 @@ massfame-fresh.txt
 .repair-stage*/
 .rea-socpanel-profile/
 **/diagnostic.php
+/database-recovery-*/
+start-recovered-database.ps1

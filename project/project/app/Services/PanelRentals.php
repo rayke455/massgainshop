@@ -102,7 +102,7 @@ class PanelRentals {
         $cur = self::currency($panel);
         return Service::with('category.socialMedia')->where('service_status', 1)
             ->whereHas('category', fn($q) => $q->where('status', 1))->orderBy('category_id')->get()
-            ->reject(fn($s) => optional($overrides->get($s->id))->hidden)
+            ->reject(fn($s) => optional($overrides->get($s->id))->hidden || !self::serviceImported($panel, (int) $s->id))
             ->each(function ($s) use ($panel, $overrides, $cur) {
                 $s->panel_price = self::pricePerK($s, $panel, $overrides->get($s->id), $cur);
             })->values();
@@ -202,7 +202,17 @@ class PanelRentals {
     /** Service ids a panel owner hid from their customers. */
     public static function hiddenIds(?User $user): array {
         $panel = self::panelFor($user);
-        return $panel ? DB::table('rental_panel_prices')->where('panel_id', $panel->id)->where('hidden', 1)->pluck('service_id')->all() : [];
+        if (!$panel) return [];
+        $hidden = DB::table('rental_panel_prices')->where('panel_id', $panel->id)->where('hidden', 1)->pluck('service_id')->map(fn($id) => (int) $id);
+        if (($panel->workspace()['catalogue_mode'] ?? 'all') === 'selected') {
+            $hidden = $hidden->merge(Service::whereNotIn('id', $panel->workspace()['imported_service_ids'] ?? [])->pluck('id')->map(fn($id) => (int) $id));
+        }
+        return $hidden->unique()->values()->all();
+    }
+
+    public static function serviceImported(RentalPanel $panel, int $id): bool {
+        $settings = $panel->workspace();
+        return ($settings['catalogue_mode'] ?? 'all') === 'all' || in_array($id, array_map('intval', $settings['imported_service_ids'] ?? []), true);
     }
 
     /** After a panel customer's order is accepted: credit the owner's profit. Call inside the order transaction. */

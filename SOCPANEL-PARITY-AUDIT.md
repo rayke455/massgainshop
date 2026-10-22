@@ -4,6 +4,8 @@ Scope: read-only inspection of the signed-in tenant-owner interface for panel 30
 
 ## Billing
 
+Decision confirmed by user on 2026-10-22: prepaid platform commission defaults to tenant profit, not gross customer order price. Prepaid ledger/grace implementation is still pending; the existing earnings-withholding mechanism has not been silently replaced.
+
 - Observed owner balance and a warning that a negative balance will cause the panel to freeze soon. Add funds opens a payment-method chooser.
 - Public https://socpanel.com/ advertises a $10 first deposit/activation and 5% commission on completed orders, described as a percentage of income. The wording does not establish whether the exact calculation uses revenue or net margin. Do not encode a guessed basis.
 - Exact grace duration, ledger settlement timing, refunds, reactivation and platform-super-admin controls have NOT been verified.
@@ -12,6 +14,8 @@ Scope: read-only inspection of the signed-in tenant-owner interface for panel 30
 - Administrator should configure activation, rate/basis and grace period, as requested. Existing financial records must be preserved; no retrospective charging without an explicit policy.
 
 ## Service management
+
+Implemented 2026-10-22: authenticated tenant import screen for the default Mass Panel Shop provider, paginated search, multi-select, optional bulk markup, additive imports, and reversible all-services/selected-only catalogue mode. Guest catalogue, customer checkout, advanced-form preselection and API catalogue must respect selection and hidden-service rules. Owner isolation and selected-catalogue tests added. This does not implement independent external provider credentials, manual fulfillment or digital-goods inventory.
 
 Observed `/services`: Add service, Import services, Direct providers, search, categories and Add category. Rows expose provider/service mapping.
 

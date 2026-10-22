@@ -15,6 +15,7 @@
         <a data-control-link href="#customers"><span class="control-icon orange" aria-hidden="true">@include('rentals.control-icon', ['name' => 'users'])</span><span>Customers<small>{{ number_format($customerTotal) }} registered customers</small></span><span aria-hidden="true">›</span></a>
         @endif
         @if($panel->allows('branding'))
+        <a href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen' => 'landing']) : route('user.panels.landing', $panel->id) }}"><span class="control-icon purple" aria-hidden="true">@include('rentals.control-icon', ['name' => 'settings'])</span><span>Landing page designer<small>HTML, CSS, preview and publish</small></span><span aria-hidden="true">›</span></a>
         <a href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen' => 'content']) : route('user.panels.content', $panel->id) }}"><span class="control-icon purple" aria-hidden="true">@include('rentals.control-icon', ['name' => 'list'])</span><span>Pages, FAQ & announcements<small>Publish content and customer updates</small></span><span aria-hidden="true">›</span></a>
         @endif
         <a data-control-link href="#orders"><span class="control-icon orange" aria-hidden="true">@include('rentals.control-icon', ['name' => 'list'])</span><span>Storefront orders<small>Customer requests, payments and tracking</small></span><span aria-hidden="true">›</span></a>

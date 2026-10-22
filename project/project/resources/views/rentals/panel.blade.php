@@ -147,6 +147,7 @@
 {{-- ===== Your prices ===== --}}
 @if($panel->allows('markup'))
 <section id="services" class="tenant-section" aria-label="Service prices">
+@unless($ownerPreview ?? false)<p><a class="button" href="{{ route('user.panels.services.import', $panel->id) }}">Import services from Mass Panel Shop</a></p>@endunless
 <div class="card">
     <h2>Your prices <small>per 1,000 or item, in {{ $cur->code }}</small></h2>
     <p class="muted">Leave a price empty to use your {{ rtrim(rtrim(number_format($panel->markup, 2), '0'), '.') }}% markup. Prices can't go below your cost (they are raised to the cost automatically). Tick "Hide" to remove a service from your panel.</p>

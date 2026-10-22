@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+<symbol id="icon-home" viewBox="0 0 24 24"><path d="M12 2 1 11l2 2 2-2v11h5v-7h4v7h5V11l2 2 2-2Z"/></symbol>
 <symbol id="icon-user" viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10ZM4 22v-2a8 8 0 0 1 16 0v2Z"/></symbol>
 <symbol id="icon-cart" viewBox="0 0 24 24"><path d="M2 2h4l1 4h15l-3 10H8L5 5H2Zm7 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm9 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></symbol>
 <symbol id="icon-layers" viewBox="0 0 24 24"><path d="m12 2 11 6-11 6L1 8Zm-8 9 8 4.4 8-4.4 3 2-11 6-11-6Zm0 5 8 4.4 8-4.4 3 2-11 6-11-6Z"/></symbol>
