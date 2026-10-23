@@ -43,6 +43,7 @@
     <meta name="keywords" content="{{ $currentKeywords }}">
     <meta name="robots" content="{{ $currentRobots }}">
     <link rel="canonical" href="{{ url()->current() }}">
+    <meta name="google-site-verification" content="uSOPqQv5Gt-8m_dQ0ynKkvBZyJJXHFAq9xEKvNEf1pk">
 
     <!-- Regional & Geo-targeting for Kenya, Africa, and Global Search -->
     <meta name="geo.region" content="KE">
