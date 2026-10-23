@@ -80,6 +80,7 @@ Route::get('robots.txt', function () {
     return response($robots, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 });
 Route::get('sitemap.xml', [\App\Http\Controllers\Frontend\LandingController::class, 'sitemap'])->name('sitemap.root');
+Route::get('e8f49a2b71c045b89d6e3f2187a54902.txt', fn() => response('e8f49a2b71c045b89d6e3f2187a54902', 200, ['Content-Type' => 'text/plain; charset=utf-8']));
 
 Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModuleIsEnable']], function () use ($basicControl) {
     Route::get('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'index'])->name('guest.order');
