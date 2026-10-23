@@ -3,11 +3,12 @@
     $screenUrl = fn($screen) => ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen' => $screen]) : route('user.panels.'.$screen, $panel->id);
     $groups = [
         'Setup' => [
-            ['General settings', 'settings', $controlBase.'#general', true],
-            ['Provider', 'provider', $controlBase.'#provider', true],
-            ['Payments & earnings', 'wallet', $controlBase.'#payments', true],
+            ['Common settings', 'settings', $controlBase.'#common-general', true],
+            ['Provider & API', 'provider', $controlBase.'#provider', true],
+            ['Payments & billing', 'wallet', $controlBase.'#payments', true],
             ['Landing page designer', 'design', $screenUrl('landing'), $panel->allows('branding')],
-            ['Service settings', 'list', $controlBase.'#services', $panel->allows('markup')],
+            ['Service pricing', 'list', $controlBase.'#services', $panel->allows('markup')],
+            ['Import services', 'list', ($ownerPreview ?? false) ? $controlBase.'#services' : route('user.panels.services.import', $panel->id), $panel->allows('catalogue')],
             ['Customer support', 'support', $screenUrl('support'), $panel->allows('accounts')],
         ],
         'Create' => [

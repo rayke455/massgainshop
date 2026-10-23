@@ -104,7 +104,7 @@ class PanelRentalController extends Controller {
             'tagline' => 'nullable|string|max:160', 'color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'whatsapp' => ['nullable', 'regex:/^\+?[0-9 ]{7,20}$/'],
             'currency' => 'nullable|string|exists:currencies,code', 'payment_mode' => 'nullable|in:mpesa,manual',
             'logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048', 'remove_logo' => 'nullable|boolean',
-            'workspace' => 'nullable|array:registration,registration_fields,show_spent,show_orders,announcement,seo_title,seo_description,terms,privacy',
+            'workspace' => 'nullable|array:registration,registration_fields,show_spent,show_orders,announcement,seo_title,seo_description,seo_keywords,terms,privacy,price_format,fast_orders,auto_cancel_failed,show_avg_time,popular_badges,drip_feed,multi_orders,referral_percent,support_telegram,support_email,catalogue_mode,imported_service_ids',
             'workspace.registration_fields' => 'nullable|array:field_1,field_2,field_3,field_4,field_5',
             'workspace.registration_fields.*' => 'array:label,required',
             'workspace.registration_fields.*.label' => 'nullable|string|max:80',
@@ -115,18 +115,35 @@ class PanelRentalController extends Controller {
             'workspace.announcement' => 'nullable|string|max:1000',
             'workspace.seo_title' => 'nullable|string|max:100',
             'workspace.seo_description' => 'nullable|string|max:300',
+            'workspace.seo_keywords' => 'nullable|string|max:300',
             'workspace.terms' => 'nullable|string|max:20000',
             'workspace.privacy' => 'nullable|string|max:20000',
+            'workspace.price_format' => 'nullable|in:per_k,per_hundred,per_one',
+            'workspace.fast_orders' => 'nullable|boolean',
+            'workspace.auto_cancel_failed' => 'nullable|boolean',
+            'workspace.show_avg_time' => 'nullable|boolean',
+            'workspace.popular_badges' => 'nullable|boolean',
+            'workspace.drip_feed' => 'nullable|boolean',
+            'workspace.multi_orders' => 'nullable|boolean',
+            'workspace.referral_percent' => 'nullable|numeric|min:0|max:100',
+            'workspace.support_telegram' => 'nullable|string|max:100',
+            'workspace.support_email' => 'nullable|email|max:255',
+            'active_tab' => 'nullable|string|max:40',
         ]);
         if (isset($data['workspace'])) {
             $workspace = $data['workspace'];
             if (!$panel->allows('accounts')) unset($workspace['registration_fields']);
-            foreach (['registration', 'show_spent', 'show_orders'] as $key) $workspace[$key] = (bool) $workspace[$key];
-            foreach (['announcement', 'seo_title', 'seo_description', 'terms', 'privacy'] as $key) {
+            foreach (['registration', 'show_spent', 'show_orders', 'fast_orders', 'auto_cancel_failed', 'show_avg_time', 'popular_badges', 'drip_feed', 'multi_orders'] as $key) {
+                if (array_key_exists($key, $workspace)) $workspace[$key] = (bool) $workspace[$key];
+            }
+            foreach (['announcement', 'seo_title', 'seo_description', 'seo_keywords', 'terms', 'privacy', 'price_format', 'support_telegram', 'support_email'] as $key) {
                 if (array_key_exists($key, $workspace)) $workspace[$key] = $workspace[$key] ?? '';
             }
+            if (array_key_exists('referral_percent', $workspace)) {
+                $workspace['referral_percent'] = round((float) $workspace['referral_percent'], 2);
+            }
             if (!$panel->allows('branding')) {
-                foreach (['announcement', 'seo_title', 'seo_description', 'terms', 'privacy'] as $key) unset($workspace[$key]);
+                foreach (['announcement', 'seo_title', 'seo_description', 'seo_keywords', 'terms', 'privacy'] as $key) unset($workspace[$key]);
             }
             $panel->workspace_settings = array_replace($panel->workspace(), $workspace);
         }

@@ -109,12 +109,26 @@ class RentalWorkspaceTest extends TestCase
         $this->actingAs($owner);
         app(PanelRentalController::class)->update(Request::create('/', 'POST', [
             'name' => 'Updated panel', 'markup' => 20,
-            'workspace' => ['registration' => '0', 'show_spent' => '1', 'show_orders' => '0', 'announcement' => 'Welcome',
-                'registration_fields' => ['field_1' => ['label' => 'Business name', 'required' => '1']]],
+            'workspace' => [
+                'registration' => '0', 'show_spent' => '1', 'show_orders' => '0', 'announcement' => 'Welcome',
+                'registration_fields' => ['field_1' => ['label' => 'Business name', 'required' => '1']],
+                'price_format' => 'per_hundred', 'fast_orders' => '1', 'auto_cancel_failed' => '1',
+                'show_avg_time' => '1', 'popular_badges' => '1', 'drip_feed' => '1', 'multi_orders' => '1',
+                'referral_percent' => '7.5', 'support_telegram' => '@reseller', 'support_email' => 'help@tenant.test',
+                'seo_keywords' => 'smm, likes, followers',
+            ],
         ]), $panel->id);
-        $this->assertFalse($panel->fresh()->workspace()['registration']);
-        $this->assertSame('Welcome', $panel->fresh()->workspace()['announcement']);
-        $this->assertSame('Business name', $panel->fresh()->workspace()['registration_fields']['field_1']['label']);
+        $settings = $panel->fresh()->workspace();
+        $this->assertFalse($settings['registration']);
+        $this->assertSame('Welcome', $settings['announcement']);
+        $this->assertSame('Business name', $settings['registration_fields']['field_1']['label']);
+        $this->assertSame('per_hundred', $settings['price_format']);
+        $this->assertTrue($settings['fast_orders']);
+        $this->assertTrue($settings['auto_cancel_failed']);
+        $this->assertEquals(7.5, $settings['referral_percent']);
+        $this->assertSame('@reseller', $settings['support_telegram']);
+        $this->assertSame('help@tenant.test', $settings['support_email']);
+        $this->assertSame('smm, likes, followers', $settings['seo_keywords']);
         $this->assertFalse($panel->fresh()->allows('custom_domain'));
     }
 
