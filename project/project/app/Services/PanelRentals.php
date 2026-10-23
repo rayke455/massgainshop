@@ -5,6 +5,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class PanelRentals {
+    /** Display units only; checkout and provider prices remain per thousand. */
+    public static function displayUnit(RentalPanel $panel, Service $service): array {
+        if (!self::quantityBased($service)) return ['factor' => 1, 'label' => 'per item'];
+        return match ($panel->workspace()['price_format']) {
+            'per_hundred' => ['factor' => 0.1, 'label' => 'per 100'],
+            'per_one' => ['factor' => 0.001, 'label' => 'per item'],
+            default => ['factor' => 1, 'label' => 'per 1,000'],
+        };
+    }
     public const FEATURES = ['catalogue' => 'Service catalogue', 'orders' => 'Order requests', 'branding' => 'Custom panel name', 'markup' => 'Set resale markup', 'custom_domain' => 'Custom domain', 'accounts' => 'Customer accounts (sign up, wallet, dashboard)'];
     public static function settings(): array {
         $row = DB::table('rental_settings')->where('id', 1)->first();

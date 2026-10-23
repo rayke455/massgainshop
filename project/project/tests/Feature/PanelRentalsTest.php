@@ -50,6 +50,41 @@ class PanelRentalsTest extends TestCase {
         $panel->status = 'suspended'; $this->assertFalse($panel->allows('orders'));
         $panel->status = 'active'; $panel->expires_at = now()->subMinute(); $this->assertFalse($panel->available());
     }
+    public function test_domain_only_save_preserves_branding_and_requires_fresh_verification(): void {
+        $user = $this->payer(0); $this->actingAs($user);
+        $panel = $this->panel(['owner_id' => $user->id, 'custom_domain' => 'old.example.test', 'domain_verified_at' => now(), 'workspace_settings' => ['announcement' => 'Keep this']]);
+        $token = $panel->domain_token;
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => 'shop.example.test']), $panel->id);
+        $panel->refresh();
+        $this->assertSame('shop.example.test', $panel->custom_domain);
+        $this->assertNull($panel->domain_verified_at);
+        $this->assertNotSame($token, $panel->domain_token);
+        $this->assertSame('Test panel', $panel->name);
+        $this->assertSame('Keep this', $panel->workspace()['announcement']);
+        $token = $panel->domain_token;
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => 'shop.example.test']), $panel->id);
+        $this->assertSame($token, $panel->fresh()->domain_token);
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => '']), $panel->id);
+        $this->assertNull($panel->fresh()->custom_domain);
+    }
+    public function test_domain_save_cannot_change_another_owners_panel(): void {
+        $panel = $this->panel(); $this->actingAs($this->payer(0));
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => 'shop.example.test']), $panel->id);
+    }
+    public function test_domain_save_cannot_claim_another_panels_domain(): void {
+        $user = $this->payer(0); $this->actingAs($user);
+        $panel = $this->panel(['owner_id' => $user->id]);
+        $this->panel(['custom_domain' => 'claimed.example.test']);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => 'claimed.example.test']), $panel->id);
+    }
+    public function test_domain_save_respects_disabled_feature(): void {
+        $user = $this->payer(0); $this->actingAs($user);
+        $panel = $this->panel(['owner_id' => $user->id, 'features' => []]);
+        $this->expectException(HttpException::class);
+        app(PanelRentalController::class)->saveDomain(Request::create('/', 'POST', ['custom_domain' => 'shop.example.test']), $panel->id);
+    }
     public function test_owner_cannot_access_another_panel(): void {
         $panel = $this->panel(); $user = new User(); $user->id = 999999998; $this->actingAs($user);
         $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);

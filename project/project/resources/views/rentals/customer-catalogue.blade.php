@@ -2,6 +2,8 @@
     $brand = $panel->allows('branding') ? $panel->name : 'Mass Panel Shop';
     $money = fn($value) => number_format((float) $value * (float) $currency->conversion_rate, 2).' '.$currency->code;
     $browse = route('user.order.create');
+    $displayMoney = fn($value) => rtrim(rtrim(number_format((float) $value * (float) $currency->conversion_rate, 6, '.', ','), '0'), '.').' '.$currency->code;
+    $displayUnit = fn($service) => \App\Services\PanelRentals::displayUnit($panel, $service);
 @endphp
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ $brand }} · Create order</title>
 @include('rentals.workspace-style')
@@ -38,7 +40,7 @@
         <a id="order-history-link" class="primary" href="{{ route('user.order.index') }}" hidden>View orders</a>
     </form>
     @endif
-    <section class="order-details"><h2>Service details</h2><p>Service #{{ $selected->id }} · {{ $money($rate($selected)) }} {{ $selected->service_type === 'Default' ? 'per 1,000' : 'per package' }}</p><p class="order-description">{{ strip_tags($selected->description ?? '') }}</p></section>
+    <section class="order-details"><h2>Service details</h2><p>Service #{{ $selected->id }} · {{ $displayMoney($rate($selected) * $displayUnit($selected)['factor']) }} {{ $displayUnit($selected)['label'] }}</p><p class="order-description">{{ strip_tags($selected->description ?? '') }}</p></section>
     </div>
 @else
     @if($category || $network || request('q'))<a class="back" href="{{ $browse }}">← All platforms</a>@endif
@@ -47,7 +49,7 @@
     <div class="catalogue-list">
     @if($category || request('q'))
         @forelse($services as $service)
-        <a href="{{ $browse }}?serviceId={{ $service->id }}"><span class="network-icon" data-network="{{ strtolower($service->category->socialMedia->name) }}">@include('rentals.order-platform-icon', ['title' => $service->category->socialMedia->name])</span><span class="row-copy">{{ \App\Services\SmartImport::cleanName($service->service_title) }}</span><span class="row-price">{{ $money($rate($service)) }}<small style="display:block;color:var(--muted)">{{ \App\Services\PanelRentals::quantityBased($service) ? 'per 1,000' : 'per item' }}</small></span><span class="row-arrow" aria-hidden="true">›</span></a>
+        <a href="{{ $browse }}?serviceId={{ $service->id }}"><span class="network-icon" data-network="{{ strtolower($service->category->socialMedia->name) }}">@include('rentals.order-platform-icon', ['title' => $service->category->socialMedia->name])</span><span class="row-copy">{{ \App\Services\SmartImport::cleanName($service->service_title) }}</span><span class="row-price">{{ $displayMoney($rate($service) * $displayUnit($service)['factor']) }}<small style="display:block;color:var(--muted)">{{ $displayUnit($service)['label'] }}</small></span><span class="row-arrow" aria-hidden="true">›</span></a>
         @empty<p>No services found. Try another search or category.</p>@endforelse
         {{ $services->links() }}
     @elseif($network)

@@ -17,11 +17,33 @@ main{max-width:none;padding:12px 40px 60px;position:relative}
 @media(max-width:800px){header{padding:16px 18px}.tenant-preview-banner{margin:0 18px!important}main{padding:8px 18px 30px}.tenant-tabs{gap:5px;margin-bottom:22px;padding-bottom:14px}.tenant-tabs a{font-size:13px;padding:8px 10px}#tenant-control{float:none;display:flex;overflow-x:auto;width:100%;max-width:none;gap:8px;margin:0 0 26px;padding-bottom:6px}.control-group{display:contents}.control-group:before,.control-note{display:none}.control-group a{display:flex;flex-shrink:0;padding:9px 13px;background:#202a33;border-radius:20px;font-size:12px}.control-icon{width:17px;height:17px}.control-icon svg{width:17px;height:17px}.tenant-section{margin-left:0}.tenant-section h1{font-size:25px}.settings-row{gap:12px}.tenant-section.card,.tenant-section .card{padding:16px}}
 </style>
 @endpush
+
+@push('styles')
+<style>
+.owner-wide-screen #tenant-control{display:none}.owner-wide-screen .tenant-section{margin-left:0}.owner-wide-screen .tenant-section.card,.owner-wide-screen .tenant-section>.card{border:0;padding:0}.owner-wide-screen .table-wrap{border:0;border-radius:0}.owner-wide-screen table th{background:transparent;text-transform:none;font-size:14px;color:#b8c1c9}.owner-wide-screen table td{padding:18px 12px}.owner-wide-screen .tenant-section input[type=search]{max-width:420px;border-radius:24px}.owner-wide-screen .tenant-section h2{font-size:24px;font-weight:500}.owner-wide-screen .tenant-tabs a[aria-current=page]{background:#273541;color:#fff}
+</style>
+@endpush
+@push('styles')
+<style>.soc-common-tabs a.soc-common-tab{display:inline-flex;align-items:center;gap:8px;text-decoration:none;white-space:nowrap}.soc-common-tab .control-svg{width:24px;height:24px;flex:none}.soc-common-tabs{overflow-x:auto}.soc-common-tab:focus-visible{outline:2px solid #80bfff;outline-offset:2px}</style>
+@endpush
 @push('styles')
 <style>
 .control-group:before{display:none!important}.control-group-label{font-size:12px;font-weight:400;color:#8b969f;padding:0 14px;margin:0 0 6px}.control-group a{font-weight:400}.control-icon,.control-icon svg{width:24px;height:24px;flex-shrink:0}.control-group{margin-bottom:22px}.owner-subpage>h1{margin-top:0}.settings-row>span:first-child{display:flex;align-items:center;gap:12px}.settings-row .control-svg{width:32px;height:32px;flex-shrink:0}.owner-subpage textarea{max-width:100%;background:#202b35;color:#e5e9ed}.tenant-section a:focus-visible,#tenant-control a:focus-visible,.tenant-tabs a:focus-visible{outline:2px solid #80bfff;outline-offset:3px}
 header{gap:24px;padding-top:22px;padding-bottom:28px}header strong{width:255px;flex-shrink:0;background:transparent;border:1px solid #2d3740;font-size:15px;font-weight:500;padding:12px 16px}.tenant-tabs{flex:1;min-width:0;gap:10px;border:0;padding:0;margin:0}.tenant-tabs a{font-weight:600}main{padding-top:35px}.tenant-preview-banner{background:#232d37!important;margin:0!important;border-radius:0!important;color:#c5ced6!important}.control-group a{padding:9px 12px;min-height:43px}.settings-row{min-height:58px}.tenant-section h3{padding-bottom:18px;border-bottom:1px solid #25303a;margin-top:38px;font-size:20px;font-weight:500}
 @media(max-width:1050px){header{flex-wrap:wrap;gap:16px}header strong{width:auto}.tenant-tabs{flex-basis:100%}.tenant-tabs a:last-child{margin-left:0}}
 @media(max-width:800px){.control-group-label{display:none}.control-icon,.control-icon svg{width:24px;height:24px}.tenant-tabs,#tenant-control{scrollbar-width:thin;scrollbar-color:#4b5965 transparent}.owner-subpage{width:100%}}
+</style>
+@endpush
+@push('styles')
+<style>
+/* Reference settings layout: flat rows, separate detail screens, no card/tab dashboard. */
+body{font-family:Inter,Roboto,Helvetica,Arial,sans-serif;font-size:16px;background:#171f26}
+.tenant-preview-banner{min-height:46px;padding:12px!important;font-size:13px}
+header{min-height:92px;padding:12px 40px;gap:20px}header strong{width:222px;font-size:16px}.tenant-tabs a{font-size:16px;padding:10px 12px}.tenant-tabs{gap:10px}
+main{padding:48px 40px 60px}#tenant-control{margin-right:17px}.tenant-section{margin-left:272px}.control-group a{font-size:16px;padding:9px 12px;gap:12px;line-height:24px;border-radius:24px}.control-group-label{font-size:12px;margin-bottom:3px}.control-group{margin-bottom:18px}.control-note{font-size:12px}.owner-settings{max-width:none}
+.tenant-section h1{font-size:30px;line-height:36px;font-weight:600;margin:0;padding:0 0 24px;border-bottom:1px solid #29323a}.owner-settings h3{font-size:20px;line-height:26px;font-weight:600;margin:44px 0 0;padding:0 0 22px;border-bottom:1px solid #25303a}.owner-settings h1+h3{margin-top:20px}.settings-row{min-height:64px;padding:15px 0;font-size:16px}.settings-row>span:last-child{font-size:16px}.settings-row b{font-size:25px;color:#7f8992;font-weight:400}.settings-row .setting-state{display:inline;color:#31b45b;font-size:12px}.settings-row>span:first-child{gap:12px}.settings-row:hover{background:#1b252e}
+.owner-settings-editor>.card{border:0;border-radius:0;padding:0;background:transparent}.owner-settings-editor>.card>div:first-child{display:none!important}.owner-settings-editor .soc-common-tabs{display:none}.settings-back{display:inline-block;color:#8b969f;margin-bottom:18px;text-decoration:none}.owner-settings-editor h1{margin-bottom:26px}.owner-settings-editor .soc-field-grid{grid-template-columns:1fr;gap:12px;max-width:720px}.owner-settings-editor .soc-toggle-card{border:0;border-bottom:1px solid #29343d;border-radius:0;background:transparent;padding:20px 0;margin:0}.owner-settings-editor .soc-badge{display:none}.owner-settings-editor input,.owner-settings-editor select,.owner-settings-editor textarea{border-radius:8px!important}.owner-settings-editor label{font-weight:400}.owner-settings-editor .soc-toggle-card .desc{font-size:13px}
+@media(max-width:1050px){header{height:auto}.tenant-tabs{flex-basis:100%}}
+@media(max-width:800px){main{padding:24px 18px 40px}header{padding:16px 18px}.tenant-section{margin-left:0}#tenant-control{margin-right:0}.tenant-tabs a{font-size:14px}.control-group a{font-size:14px}.owner-settings h1{font-size:27px}.owner-settings-editor .soc-field-grid{display:block}.settings-row{font-size:14px}.settings-row>span:last-child{font-size:13px}.control-group-label{display:none}}
 </style>
 @endpush

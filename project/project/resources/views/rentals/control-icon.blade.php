@@ -1,4 +1,4 @@
-@if(in_array($name, ['provider', 'design', 'support']))
+@if(in_array($name, ['settings', 'wallet', 'provider', 'design', 'support']))
 @include('rentals.reference-icon', ['name' => $name])
 @else
 <svg class="control-svg tile-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

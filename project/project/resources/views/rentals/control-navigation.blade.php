@@ -3,7 +3,7 @@
     $screenUrl = fn($screen) => ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen' => $screen]) : route('user.panels.'.$screen, $panel->id);
     $groups = [
         'Setup' => [
-            ['Common settings', 'settings', $controlBase.'#common-general', true],
+            ['General settings', 'settings', $controlBase.'#general', true],
             ['Provider & API', 'provider', $controlBase.'#provider', true],
             ['Payments & billing', 'wallet', $controlBase.'#payments', true],
             ['Landing page designer', 'design', $screenUrl('landing'), $panel->allows('branding')],

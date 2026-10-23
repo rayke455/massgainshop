@@ -28,27 +28,31 @@
 <section id="general" class="tenant-section owner-settings" aria-label="General settings">
     <h1>General settings</h1>
     <h3>Registration</h3>
-    <a class="settings-row" data-control-link href="#common-registration"><span>Registration settings</span><span>{{ $panel->workspace()['registration'] ? 'Enabled' : 'Disabled' }} ›</span></a>
     @if($panel->allows('accounts'))
-    <a class="settings-row" data-control-link href="#common-registration"><span>Custom registration fields</span><span>Configure fields ›</span></a>
+    <a class="settings-row" data-control-link href="#common-registration"><span>Custom Registration Fields</span><span>Added fields: {{ collect($panel->workspace()['registration_fields'])->filter(fn($field) => !empty($field['label']))->count() }} <b aria-hidden="true">›</b></span></a>
     @endif
-    <h3>Services & ordering</h3>
-    <a class="settings-row" data-control-link href="#common-services"><span>@include('rentals.control-icon', ['name'=>'list']) Service rules & display</span><span>{{ $panel->workspace()['price_format'] === 'per_k' ? 'Per 1,000' : ($panel->workspace()['price_format'] === 'per_hundred' ? 'Per 100' : 'Per 1') }} ›</span></a>
-    @if($panel->allows('catalogue'))<a class="settings-row" data-control-link href="#services"><span>@include('rentals.control-icon', ['name'=>'list']) Service pricing catalogue</span><span>{{ number_format($serviceTotal) }} services ›</span></a>@endif
-    <a class="settings-row" href="{{ ($ownerPreview ?? false) ? route('rental.preview.public', ['shop'=>1]) : route('panels.show', ['slug'=>$panel->slug, 'shop'=>1]) }}"><span>@include('rentals.control-icon', ['name'=>'cart']) Guest storefront</span><span>Open storefront ›</span></a>
-    <a class="settings-row" data-control-link href="#payments"><span>@include('rentals.control-icon', ['name'=>'wallet']) Payments & earnings</span><span>Manage ›</span></a>
+    <h3>Extra features</h3>
+    <a class="settings-row" data-control-link href="#common-services"><span>@include('rentals.control-icon', ['name'=>'list']) Services settings</span><b aria-hidden="true">›</b></a>
+    <a class="settings-row" data-control-link href="#common-branding"><span>@include('rentals.control-icon', ['name'=>'cart']) Fast order <small class="setting-state">{{ $panel->workspace()['fast_orders'] ? '• Active' : 'Inactive' }}</small></span><b aria-hidden="true">›</b></a>
+    @if($panel->allows('accounts'))
+    <a class="settings-row" href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen'=>'promotions']) : route('user.panels.promotions', $panel->id) }}"><span>@include('rentals.control-icon', ['name'=>'promo']) Balance promotions</span><b aria-hidden="true">›</b></a>
+    @endif
     @if($panel->allows('branding'))
-    <h3>Metadata & branding</h3>
-    <a class="settings-row" data-control-link href="#common-seo"><span>SEO & customer announcements</span><span>Configure ›</span></a>
+    <h3>Meta data</h3>
+    <a class="settings-row" data-control-link href="#common-seo"><span>Search engine settings</span><b aria-hidden="true">›</b></a>
+    <a class="settings-row" data-control-link href="#common-branding"><span>Panel name and logo</span><b aria-hidden="true">›</b></a>
     @endif
-    <h3>Domain & subscription</h3>
-    <a class="settings-row" data-control-link href="#common-domains"><span>DNS settings & validity</span><span>{{ $panel->available() ? 'Active' : 'Expired' }} ›</span></a>
-    <h3>Customer visibility</h3>
-    <a class="settings-row" data-control-link href="#common-visibility"><span>Customer dashboard display</span><span>Orders & spend statistics ›</span></a>
+    <h3>Domain settings</h3>
+    <a class="settings-row" data-control-link href="#domains"><span>DNS settings</span><b aria-hidden="true">›</b></a>
+    <h3>Other</h3>
+    <a class="settings-row" data-control-link href="#common-visibility"><span>Show total panel orders</span><span>{{ $panel->workspace()['show_orders'] ? 'Enabled' : 'Disabled' }} ›</span></a>
+    <a class="settings-row" data-control-link href="#common-visibility"><span>Show user spent</span><span>{{ $panel->workspace()['show_spent'] ? 'Enabled' : 'Disabled' }} ›</span></a>
 </section>
 {{-- ===== Branding & settings + live preview ===== --}}
 {{-- ===== SocPanel Common settings (tabs: General, Services, Registration, SEO, Domains, Visibility) ===== --}}
-<section id="branding" class="tenant-section" aria-label="Common settings">
+<section id="branding" class="tenant-section owner-settings-editor" aria-label="Common settings">
+<a class="settings-back" data-control-link href="#general">‹ General settings</a>
+<h1 id="settings-editor-title">Panel name and logo</h1>
 <div class="card" style="margin-bottom:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         <div>
@@ -62,12 +66,12 @@
 
     {{-- SocPanel Tab Navigation --}}
     <div class="soc-common-tabs" role="tablist">
-        <button type="button" class="soc-common-tab active" data-tab="general">⚙️ General</button>
-        <button type="button" class="soc-common-tab" data-tab="services">📦 Services</button>
-        <button type="button" class="soc-common-tab" data-tab="registration">📝 Registration</button>
-        <button type="button" class="soc-common-tab" data-tab="seo">🔍 SEO & Meta</button>
-        <button type="button" class="soc-common-tab" data-tab="domains">🌐 Domains & DNS</button>
-        <button type="button" class="soc-common-tab" data-tab="visibility">👁️ Visibility</button>
+        <a href="#common-general" role="tab" aria-selected="true" class="soc-common-tab active" data-tab="general">@include('rentals.control-icon', ['name'=>'settings']) General</a>
+        <a href="#common-services" role="tab" aria-selected="false" class="soc-common-tab" data-tab="services">@include('rentals.control-icon', ['name'=>'list']) Services</a>
+        <a href="#common-registration" role="tab" aria-selected="false" class="soc-common-tab" data-tab="registration">@include('rentals.control-icon', ['name'=>'users']) Registration</a>
+        <a href="#common-seo" role="tab" aria-selected="false" class="soc-common-tab" data-tab="seo">@include('rentals.control-icon', ['name'=>'design']) SEO & Meta</a>
+        <a href="#common-domains" role="tab" aria-selected="false" class="soc-common-tab" data-tab="domains">@include('rentals.control-icon', ['name'=>'globe']) Domains & DNS</a>
+        <a href="#common-visibility" role="tab" aria-selected="false" class="soc-common-tab" data-tab="visibility">@include('rentals.control-icon', ['name'=>'chart']) Visibility</a>
     </div>
 
     <form method="post" action="{{ route('user.panels.update', $panel->id) }}" enctype="multipart/form-data" id="brandForm">@csrf
@@ -426,10 +430,24 @@
 
 {{-- ===== Domains & renewal (unchanged behaviour) ===== --}}
 <section id="domains" class="tenant-section" aria-label="Domains and subscription">
+<div class="card">
+    <h2>Your storefront domain</h2>
+    <p>Use the supplied subdomain or connect a domain you own. Your customers will see your panel's name and logo; your supplier is configured separately.</p>
+    <p><strong>Supplied subdomain:</strong> {{ $panel->subdomain ?: 'Not assigned yet — ask the platform administrator to configure the rental domain.' }}</p>
+    @if($panel->allows('custom_domain'))
+    <form method="post" action="{{ route('user.panels.domain', $panel->id) }}">@csrf
+        <label for="tenant-domain">Your own domain<input id="tenant-domain" name="custom_domain" value="{{ old('custom_domain', $panel->custom_domain) }}" maxlength="253" placeholder="panel.yourbrand.com" autocomplete="off" spellcheck="false"></label>
+        <small>Enter a hostname, not a page URL. Leave empty to remove the custom domain and use the supplied subdomain. Changing it requires fresh ownership verification.</small>
+        <button>Save domain</button>
+    </form>
+    @else<p>Custom domains are not enabled for this panel. Contact the platform administrator.</p>@endif
+    <p><a data-control-link href="#common-branding">Edit your panel name and logo</a> · <a href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen'=>'landing']) : route('user.panels.landing', $panel->id) }}">Customize your landing page</a></p>
+</div>
 <div class="card"><h2>Domains & renewal</h2><p>Subdomain: <strong>{{ $panel->subdomain ?: 'Assigned automatically once the platform owner sets the panel domain' }}</strong></p>
 <p class="muted">Domain ownership verification does not configure hosting or HTTPS. Your platform administrator must configure routing and certificates before the domain is ready.</p>
 @if($panel->custom_domain)<p>Custom domain: {{ $panel->custom_domain }} · {{ $panel->domain_verified_at ? 'Ownership verified' : 'Verification required' }}</p><p>Add a DNS TXT record:</p><p><code>_zirka-panel.{{ $panel->custom_domain }}</code><br><code>zirka-panel={{ $panel->domain_token }}</code></p>
-<p>Then point the domain to Mass Panel Shop: a <code>CNAME</code> record to <code>{{ $panel->subdomain ?: parse_url(config('app.url'), PHP_URL_HOST) }}</code>.</p>
+<p>After ownership verification, ask the platform administrator for the production DNS target. A subdomain can use a CNAME; a root domain may need A/AAAA records or your DNS provider's alias feature. Do not point a public domain at localhost.</p>
+<p><strong>Manual setup:</strong> add the records in your DNS provider's dashboard, then verify ownership below. <strong>Automatic setup:</strong> not connected yet; it requires authorization to your DNS provider. HTTPS must be provisioned by the hosting server before launch.</p>
 @if($panel->allows('custom_domain'))<form method="post" action="{{ route('user.panels.verify', $panel->id) }}">@csrf<button>Verify domain ownership</button></form>@endif
 @endif
 @if($panel->status === 'active' && $settings['enabled'])
@@ -514,15 +532,17 @@
 <script>
     (function () {
         const sections = [...document.querySelectorAll('.tenant-section')];
-        const links = [...document.querySelectorAll('[data-control-link]')];
+        const links = [...document.querySelectorAll('[data-control-link], .tenant-tabs a')];
         const home = document.getElementById('tenant-control');
         const tabs = [...document.querySelectorAll('.soc-common-tab')];
         const contents = [...document.querySelectorAll('.soc-tab-content')];
         const activeInput = document.getElementById('soc-active-tab');
 
         function selectSocTab(tabKey) {
+            if (!tabs.some(tab => tab.dataset.tab === tabKey)) tabKey = 'general';
             let found = false;
             tabs.forEach(t => {
+                t.setAttribute('aria-selected', String(t.dataset.tab === tabKey));
                 if (t.dataset.tab === tabKey) { t.classList.add('active'); found = true; }
                 else { t.classList.remove('active'); }
             });
@@ -531,6 +551,8 @@
                 else { c.classList.remove('active'); }
             });
             if (found && activeInput) activeInput.value = tabKey;
+            const titles = {general:'Panel name and logo',services:'Services settings',registration:'Custom Registration Fields',seo:'Meta data',domains:'Domain settings',visibility:'Customer visibility'};
+            document.getElementById('settings-editor-title').textContent = titles[tabKey] || titles.general;
         }
 
         tabs.forEach(btn => {
@@ -544,12 +566,15 @@
 
         function navigate() {
             let rawKey = location.hash.slice(1) || 'general';
+            if (rawKey === 'common-general') rawKey = 'general';
             let subTab = null;
             if (rawKey.startsWith('common-')) {
                 subTab = rawKey.replace('common-', '');
+                if (subTab === 'branding') subTab = 'general';
                 rawKey = 'branding';
             }
             const selected = sections.find(section => section.id === rawKey) || document.getElementById('general');
+            document.body.classList.toggle('owner-wide-screen', ['orders', 'customers', 'services', 'statistics'].includes(selected.id));
             sections.forEach(section => section.hidden = selected ? section !== selected : true);
             home.hidden = false;
             document.getElementById('control-back').hidden = true;
@@ -582,7 +607,7 @@
         const form = document.getElementById('brandForm'), pv = document.getElementById('pv'), url = @json(route('user.panels.preview'));
         let t;
         form?.addEventListener('input', e => {
-            if (e.target.type === 'file') return;
+            if (e.target.type === 'file' || !pv || @json($ownerPreview ?? false)) return;
             clearTimeout(t);
             t = setTimeout(() => {
                 const q = new URLSearchParams({panel: @json($panel->id), name: form.name?.value || '', tagline: form.tagline?.value || '',

@@ -1,0 +1,26 @@
+# Robots.txt for Mass Fame Shop (massfameshop.com)
+# Africa's #1 Best and Cheapest SMM Panel
+User-agent: *
+Allow: /
+Allow: /buy
+Allow: /buy/*
+Allow: /services
+Allow: /order-without-account
+Allow: /blog
+Allow: /blog/*
+Allow: /instruction/page
+Allow: /rental-preview
+Allow: /panels/*
+
+# Protect private account and administrative endpoints
+Disallow: /user/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /password/
+Disallow: /mpesa/
+Disallow: /snippe/
+Disallow: /kora-payment/
+Disallow: /khalti/
+
+# Official Sitemap Index
+Sitemap: https://massfameshop.com/sitemap.xml

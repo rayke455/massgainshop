@@ -59,6 +59,28 @@ Route::post('mpesa/webhook', [MpesaController::class, 'webhook'])->name('mpesa.w
 Route::post('rentals/payout-result', [\App\Http\Controllers\PanelRentalController::class, 'payoutResult'])->middleware('throttle:60,1')->name('rentals.payout.result');
 Route::post('snippe/webhook', [\App\Http\Controllers\SnippeController::class, 'webhook'])->middleware('throttle:120,1')->name('snippe.webhook');
 
+// Fast, public SEO crawlers endpoints: robots.txt and sitemap.xml
+Route::get('robots.txt', function () {
+    $robots = "# Robots.txt for Mass Fame Shop (massfameshop.com)\n"
+        . "# Africa's #1 Best and Cheapest SMM Panel\n"
+        . "User-agent: *\n"
+        . "Allow: /\n"
+        . "Allow: /buy\n"
+        . "Allow: /buy/*\n"
+        . "Allow: /services\n"
+        . "Allow: /order-without-account\n"
+        . "Allow: /blog\n"
+        . "Disallow: /user/\n"
+        . "Disallow: /admin/\n"
+        . "Disallow: /api/\n"
+        . "Disallow: /password/\n"
+        . "Disallow: /mpesa/\n"
+        . "Disallow: /snippe/\n\n"
+        . "Sitemap: " . url('/sitemap.xml') . "\n";
+    return response($robots, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+});
+Route::get('sitemap.xml', [\App\Http\Controllers\Frontend\LandingController::class, 'sitemap'])->name('sitemap.root');
+
 Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModuleIsEnable']], function () use ($basicControl) {
     Route::get('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'index'])->name('guest.order');
     Route::post('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'store'])->middleware('throttle:3,1')->block(40,40)->name('guest.store');
@@ -253,6 +275,7 @@ Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController:
         Route::post('/', [\App\Http\Controllers\PanelRentalController::class, 'store'])->middleware('throttle:5,1')->name('store');
         Route::get('/{id}', [\App\Http\Controllers\PanelRentalController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/{id}/settings', [\App\Http\Controllers\PanelRentalController::class, 'update'])->whereNumber('id')->name('update');
+        Route::post('/{id}/domain', [\App\Http\Controllers\PanelRentalController::class, 'saveDomain'])->whereNumber('id')->middleware('throttle:10,1')->name('domain');
         Route::post('/{id}/customers/{customerId}/status', [\App\Http\Controllers\PanelRentalController::class, 'customerStatus'])->whereNumber('id')->whereNumber('customerId')->middleware('throttle:20,1')->name('customer.status');
         Route::post('/{id}/verify', [\App\Http\Controllers\PanelRentalController::class, 'verify'])->middleware('throttle:3,1')->name('verify');
         Route::post('/{id}/renew', [\App\Http\Controllers\PanelRentalController::class, 'renew'])->middleware('throttle:2,1')->block(10, 10)->name('renew');

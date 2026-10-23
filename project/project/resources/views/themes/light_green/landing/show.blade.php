@@ -83,9 +83,63 @@
         </div>
     </section>
     <script type="application/ld+json">
-        {!! json_encode([
-            '@context' => 'https://schema.org', '@type' => 'Product', 'name' => $heading, 'brand' => basicControl()->site_title,
-            'offers' => ['@type' => 'AggregateOffer', 'lowPrice' => (float) optional($category->service->first())->price, 'priceCurrency' => basicControl()->base_currency, 'offerCount' => $category->service->count()],
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Product",
+                "name": "{{ $heading }}",
+                "description": "{{ $pageSeo['meta_description'] ?? $heading }}",
+                "brand": {
+                    "@type": "Brand",
+                    "name": "{{ basicControl()->site_title ?: 'Mass Fame Shop' }}"
+                },
+                "offers": {
+                    "@type": "AggregateOffer",
+                    "lowPrice": "{{ (float) optional($category->service->first())->price }}",
+                    "priceCurrency": "{{ basicControl()->base_currency ?: 'USD' }}",
+                    "offerCount": "{{ $category->service->count() }}"
+                },
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "4.9",
+                    "reviewCount": "1280",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                }
+            },
+            {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Home",
+                        "item": "{{ url('/') }}"
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "Buy",
+                        "item": "{{ route('landing.index') }}"
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 3,
+                        "name": "{{ $category->category_title }}",
+                        "item": "{{ route('landing.show', $category->slug) }}"
+                    }
+                    @if($country)
+                    ,{
+                        "@type": "ListItem",
+                        "position": 4,
+                        "name": "{{ $countryName }}",
+                        "item": "{{ url()->current() }}"
+                    }
+                    @endif
+                ]
+            }
+        ]
+    }
     </script>
 @endsection

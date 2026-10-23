@@ -21,11 +21,11 @@
                 <div class="zk-hero__content">
                     <div class="zk-trust">
                         <span class="zk-trust__stars" aria-hidden="true"><i class="fa-solid fa-sparkles"></i></span>
-                        <span class="zk-trust__text">@lang('For creators, brands & resellers')</span>
+                        <span class="zk-trust__text">@lang('Africa & Kenya\'s #1 SMM Provider · Instant M-Pesa')</span>
                     </div>
 
-                    <h1 class="zk-hero__title">@lang('Your next move.')<br><span class="zk-hl">@lang('More reach.')</span></h1>
-                    <p class="zk-hero__desc">@lang('Discover social media services for your favourite platforms. Compare clear prices, place an order, and follow its progress in one simple dashboard.')</p>
+                    <h1 class="zk-hero__title">@lang('Best SMM in Africa.')<br><span class="zk-hl">@lang('Fast, Cheap & Real.')</span></h1>
+                    <p class="zk-hero__desc">@lang('Mass Fame Shop is Africa and Kenya\'s top-rated SMM panel. Buy real followers, likes, views, and watch hours for Instagram, TikTok, YouTube & Facebook with instant automated M-Pesa or card delivery.')</p>
 
                     <div class="zk-hero__actions">
                         @guest

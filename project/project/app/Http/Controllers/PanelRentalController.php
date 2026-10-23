@@ -188,6 +188,27 @@ class PanelRentalController extends Controller {
         PanelRentals::audit($panel->id, 'user:'.auth()->id(), 'domain_verified');
         return back()->with('success', 'Domain ownership verified. DNS routing and HTTPS must also be configured on your server.');
     }
+    /** Domain-only changes must not replace branding or unrelated workspace settings. */
+    public function saveDomain(Request $request, int $id) {
+        $data = $request->validate(['custom_domain' => 'nullable|string|max:253']);
+        DB::transaction(function () use ($data, $id) {
+            $panel = RentalPanel::where('owner_id', auth()->id())->lockForUpdate()->findOrFail($id);
+            abort_unless($panel->allows('custom_domain'), 403);
+            $domain = PanelRentals::host($data['custom_domain'] ?? '');
+            $base = PanelRentals::baseDomain(PanelRentals::settings());
+            $main = strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
+            if ($domain && (!PanelRentals::validHost($domain) || $domain === $main ||
+                ($base && ($domain === $base || str_ends_with($domain, '.'.$base))) ||
+                RentalPanel::where('id', '!=', $panel->id)->where(fn($query) => $query->where('custom_domain', $domain)->orWhere('subdomain', $domain))->exists())) {
+                throw ValidationException::withMessages(['custom_domain' => 'Enter an unassigned domain you own, without a URL path.']);
+            }
+            if ($domain !== ($panel->custom_domain ?? '')) {
+                $panel->update(['custom_domain' => $domain ?: null, 'domain_verified_at' => null, 'domain_token' => Str::random(48)]);
+                PanelRentals::audit($panel->id, 'user:'.auth()->id(), 'domain_updated');
+            }
+        });
+        return redirect(route('user.panels.show', $id).'#domains')->with('success', 'Domain saved. Verify ownership before using a new custom domain.');
+    }
     public function renew(Request $request, int $id) {
         $settings = PanelRentals::settings();
         $request->validate(['price' => 'required|numeric', 'renewal_token' => 'required|string']);

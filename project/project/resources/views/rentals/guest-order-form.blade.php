@@ -1,4 +1,6 @@
 @if(!$panel->allows('orders'))<p>Ordering is currently disabled for this panel.</p>
+@elseif(!$panel->workspace()['fast_orders'])
+<p>Guest ordering is disabled. @if($login)<a href="{{ $login }}">Sign in to order</a>@else Please contact panel support to access your account.@endif</p>
 @else
 @php
     $quantityBased = \App\Services\PanelRentals::quantityBased($selected);

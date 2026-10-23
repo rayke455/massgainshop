@@ -48,17 +48,23 @@
             <div class="col-lg-2 col-md-3 col-6">
                 <h5>@lang("Quick Links")</h5>
                 <ul>
+                    <li><a href="{{ route('landing.index') }}">@lang("Buy Services")</a></li>
+                    <li><a href="{{ route('services') }}">@lang("Live Services")</a></li>
+                    <li><a href="{{ route('guest.order') }}">@lang("Instant Order")</a></li>
+                    <li><a href="{{ url('/rental-preview') }}">@lang("Panel Rentals")</a></li>
                     @foreach(getFooterMenuData('useful_link') ?? [] as $list)
                         {!! $list !!}
                     @endforeach
                 </ul>
             </div>
             <div class="col-lg-2 col-md-3 col-6">
-                <h5>@lang("Company")</h5>
+                <h5>@lang("Africa Hub")</h5>
                 <ul>
-                    @foreach(getFooterMenuData('support_link') ?? [] as $list)
-                        {!! $list !!}
-                    @endforeach
+                    <li><a href="{{ url('/buy/kenya') }}">@lang("Kenya (M-Pesa)")</a></li>
+                    <li><a href="{{ url('/buy/africa') }}">@lang("Africa Hub")</a></li>
+                    <li><a href="{{ url('/buy/nigeria') }}">@lang("Nigeria")</a></li>
+                    <li><a href="{{ url('/buy/south-africa') }}">@lang("South Africa")</a></li>
+                    <li><a href="{{ url('/buy/tanzania') }}">@lang("Tanzania")</a></li>
                 </ul>
             </div>
             <div class="col-lg-4 col-md-12">

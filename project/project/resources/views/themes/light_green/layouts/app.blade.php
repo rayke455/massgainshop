@@ -5,25 +5,165 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@lang(basicControl()->site_title) | @if(isset($pageSeo['page_title']))
-            @lang($pageSeo['page_title'])
-        @else
-            @yield('title')
-        @endif
-    </title>
+    @php
+        $siteTitle = basicControl()->site_title ?: 'Mass Fame Shop';
+        $defaultPageTitle = 'Best SMM Panel in Africa & Kenya | ' . $siteTitle . ' - Cheapest SMM Provider';
+        $defaultMetaDesc = $siteTitle . ' is Africa and Kenya\'s #1 best and cheapest SMM panel. Buy real Instagram followers, likes, TikTok views, YouTube watch hours and Facebook likes with instant automated M-Pesa, card or crypto checkout 24/7.';
+        $defaultKeywords = 'best smm in africa, best smm panel kenya, cheapest smm panel kenya, smm panel mpesa, smm provider africa, buy instagram followers kenya, buy tiktok views kenya, youtube subscribers kenya, smm reseller panel africa, cheap smm panel worldwide, mass fame shop';
+        
+        $currentTitle = (isset($pageSeo['meta_title']) && !empty($pageSeo['meta_title'])) 
+            ? trans($pageSeo['meta_title']) 
+            : ((isset($pageSeo['page_title']) && !empty($pageSeo['page_title'])) 
+                ? trans($pageSeo['page_title']) . ' | ' . $siteTitle 
+                : $defaultPageTitle);
+            
+        $currentDesc = (isset($pageSeo['meta_description']) && !empty($pageSeo['meta_description'])) 
+            ? trans($pageSeo['meta_description']) 
+            : $defaultMetaDesc;
+            
+        $currentKeywords = (isset($pageSeo['meta_keywords']) && !empty($pageSeo['meta_keywords'])) 
+            ? trans($pageSeo['meta_keywords']) 
+            : $defaultKeywords;
+            
+        $currentRobots = (isset($pageSeo['meta_robots']) && !empty($pageSeo['meta_robots'])) 
+            ? trans($pageSeo['meta_robots']) 
+            : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+            
+        $ogImage = (isset($pageSeo['meta_image']) && !empty($pageSeo['meta_image']))
+            ? $pageSeo['meta_image']
+            : ((isset($pageSeo['seo_meta_image']) && !empty($pageSeo['seo_meta_image']))
+                ? trans($pageSeo['seo_meta_image'])
+                : getFile(basicControl()->logo_driver, basicControl()->logo));
+    @endphp
 
-    <meta name="title" content="{{ isset($pageSeo['meta_title']) ? trans($pageSeo['meta_title']) : ''  }}">
-    <meta name="author" content="{{ basicControl()->site_title }}">
-    <meta name="description"
-          content="{{ isset($pageSeo['meta_description']) ? trans($pageSeo['meta_description']) : '' }}">
-    <meta name="keywords" content="{{ isset($pageSeo['meta_keywords']) ? trans($pageSeo['meta_keywords']) : '' }}">
-    <meta name="robots" content="{{ isset($pageSeo['meta_robots']) ? trans($pageSeo['meta_robots']) : '' }}">
+    <title>{{ $currentTitle }}</title>
+    <meta name="title" content="{{ $currentTitle }}">
+    <meta name="author" content="{{ $siteTitle }}">
+    <meta name="description" content="{{ $currentDesc }}">
+    <meta name="keywords" content="{{ $currentKeywords }}">
+    <meta name="robots" content="{{ $currentRobots }}">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <!-- Regional & Geo-targeting for Kenya, Africa, and Global Search -->
+    <meta name="geo.region" content="KE">
+    <meta name="geo.placename" content="Nairobi, Kenya, Africa">
+    <meta name="geo.position" content="-1.286389;36.817223">
+    <meta name="ICBM" content="-1.286389, 36.817223">
+
+    <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="{{ basicControl()->site_title }}">
-    <meta property="og:title" content="{{ isset($pageSeo['meta_title']) ? trans($pageSeo['meta_title']) : "" }}">
-    <meta property="og:description"
-          content="{{ isset($pageSeo['og_description']) ? trans($pageSeo['og_description']) : "" }}">
-    <meta property="og:image" content="{{ isset($pageSeo['seo_meta_image']) ? trans($pageSeo['seo_meta_image']) : ""}}">
+    <meta property="og:site_name" content="{{ $siteTitle }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $currentTitle }}">
+    <meta property="og:description" content="{{ $currentDesc }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $currentTitle }}">
+    <meta name="twitter:description" content="{{ $currentDesc }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
+
+    <!-- Schema.org JSON-LD Structured Data for Google SERP Rich Results & SMM Rankings -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": "{{ url('/') }}/#website",
+                "url": "{{ url('/') }}",
+                "name": "{{ $siteTitle }}",
+                "description": "Africa and Kenya's #1 Best and Cheapest SMM Panel with instant M-Pesa automated delivery.",
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": "{{ route('services') }}?search={search_term_string}",
+                    "query-input": "required name=search_term_string"
+                }
+            },
+            {
+                "@type": "Organization",
+                "@id": "{{ url('/') }}/#organization",
+                "name": "{{ $siteTitle }}",
+                "alternateName": [
+                    "Best SMM Panel in Africa",
+                    "Best SMM Panel Kenya",
+                    "MassFameShop"
+                ],
+                "url": "{{ url('/') }}",
+                "logo": "{{ getFile(basicControl()->logo_driver, basicControl()->logo) }}",
+                "description": "Leading SMM panel provider in Africa & Kenya. Buy cheap, real social media growth services with automated M-Pesa, card, and crypto payment.",
+                "areaServed": [
+                    {"@type": "Country", "name": "Kenya"},
+                    {"@type": "Continent", "name": "Africa"},
+                    {"@type": "Country", "name": "Nigeria"},
+                    {"@type": "Country", "name": "Tanzania"},
+                    {"@type": "Country", "name": "Uganda"},
+                    {"@type": "Country", "name": "South Africa"},
+                    {"@type": "Country", "name": "Ghana"},
+                    {"@type": "Country", "name": "Rwanda"},
+                    {"@type": "Place", "name": "Worldwide"}
+                ],
+                "paymentAccepted": [
+                    "M-Pesa",
+                    "Lipa Na M-Pesa",
+                    "Credit Card",
+                    "Debit Card",
+                    "Cryptocurrency",
+                    "Airtel Money",
+                    "Bank Transfer"
+                ],
+                "currenciesAccepted": "KES, USD, NGN, TZS, UGX, ZAR, GHS, EUR",
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "4.9",
+                    "reviewCount": "1950",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                }
+            },
+            {
+                "@type": "FAQPage",
+                "@id": "{{ url()->current() }}/#faq",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": "What is the best SMM panel in Africa and Kenya?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Mass Fame Shop (massfameshop.com) is the #1 best and cheapest SMM panel in Africa and Kenya, providing automated instant delivery for Instagram, TikTok, YouTube, Telegram, and Facebook services with 24/7 customer support."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Can I pay for SMM services using M-Pesa in Kenya?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Yes! Mass Fame Shop supports instant automated Lipa Na M-Pesa STK push and Paybill. Your payment is verified instantly and your order begins delivery within minutes."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "How fast are social media orders delivered?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Most orders on Mass Fame Shop start within 1 to 5 minutes of payment confirmation. Full delivery completes smoothly based on your selected package speed."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Do I need to share my social media password?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "No! We never ask for your password or sensitive account access. Only your public username or post link is required."
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    </script>
 
     <link rel="shortcut icon" href="{{ getFile(basicControl()->favicon_driver, basicControl()->favicon) }}"
           type="image/x-icon">

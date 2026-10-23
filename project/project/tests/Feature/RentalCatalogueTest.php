@@ -33,6 +33,33 @@ class RentalCatalogueTest extends TestCase
         return app(RentalCatalogueController::class)->index($request);
     }
 
+    public function test_guest_order_switch_blocks_direct_posts_but_keeps_catalogue_browsable(): void
+    {
+        [$user, $panel, , , $service] = $this->fixture();
+        $panel->update(['workspace_settings' => ['fast_orders' => false]]);
+        auth()->logout();
+        $this->app->forgetInstance('rental.panel');
+        $this->get('/panels/'.$panel->slug.'?shop=1&service='.$service->id)
+            ->assertOk()->assertSee('Guest ordering is disabled')->assertDontSee('id="orderForm"', false);
+        $this->post('/panels/'.$panel->slug.'/panel-order', [])->assertForbidden();
+        $this->assertDatabaseMissing('rental_requests', ['panel_id' => $panel->id]);
+    }
+
+    public function test_display_units_change_labels_without_changing_checkout_rate(): void
+    {
+        [$user, $panel, , , $service] = $this->fixture();
+        foreach (['per_k' => [1, 'per 1,000'], 'per_hundred' => [0.1, 'per 100'], 'per_one' => [0.001, 'per item']] as $format => [$factor, $label]) {
+            $panel->update(['workspace_settings' => ['price_format' => $format]]);
+            $unit = \App\Services\PanelRentals::displayUnit($panel, $service);
+            $this->assertEquals($factor, $unit['factor']);
+            $this->assertSame($label, $unit['label']);
+            $this->assertStringContainsString($label, $this->renderFor($user, ['serviceId' => $service->id])->render());
+        }
+        $this->assertEquals(10, $service->fresh()->price);
+        $service->service_type = 'Package';
+        $this->assertSame(['factor' => 1, 'label' => 'per item'], \App\Services\PanelRentals::displayUnit($panel, $service));
+    }
+
     public function test_real_catalogue_and_checkout_render_without_supplier_details(): void
     {
         [$user, $panel, $network, $category, $service] = $this->fixture();

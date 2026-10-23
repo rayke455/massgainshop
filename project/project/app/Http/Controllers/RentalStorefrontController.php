@@ -32,6 +32,7 @@ class RentalStorefrontController extends Controller {
 
     public function order(Request $request, string $slug) {
         $panel = $this->panel($slug); abort_unless($panel->allows('orders') && $panel->allows('catalogue'), 403);
+        abort_unless($panel->workspace()['fast_orders'], 403, 'Guest ordering is disabled. Please sign in to order.');
         $useMpesa = $panel->payment_mode === 'mpesa' && (new MpesaService())->ready();
         if ($panel->payment_mode === 'mpesa' && !$useMpesa) {
             return back()->withInput()->withErrors(['payment' => 'M-Pesa payments are temporarily unavailable. Please contact panel support.']);

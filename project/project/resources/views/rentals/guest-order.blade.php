@@ -1,6 +1,8 @@
 @php
     $brand = $panel->allows('branding') ? $panel->name : 'Mass Panel Shop';
     $all = $groups->flatten(1);
+    $displayMoney = fn($value) => rtrim(rtrim(number_format((float) $value, 6, '.', ','), '0'), '.').' '.$cur->code;
+    $displayUnit = fn($service) => \App\Services\PanelRentals::displayUnit($panel, $service);
     $home = request()->fullUrlWithoutQuery(['shop','network','category','service','q','account']);
     $browse = $home.(str_contains($home,'?') ? '&' : '?').'shop=1';
     $linkTo = fn($params) => $browse.'&'.http_build_query($params);
@@ -43,12 +45,12 @@
 @elseif($selected)
 <div class="order-form-layout">
 @include('rentals.guest-order-form')
-<section class="order-details"><h2>Service details</h2><p>Service ID · {{ $selected->id }}</p><p>{{ $money($selected->panel_price) }} {{ \App\Services\PanelRentals::quantityBased($selected) ? 'per 1,000' : 'per item' }}</p><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><div class="order-description">{{ strip_tags($selected->description ?? '') }}</div></section>
+<section class="order-details"><h2>Service details</h2><p>Service ID · {{ $selected->id }}</p><p>{{ $displayMoney($selected->panel_price * $displayUnit($selected)['factor']) }} {{ $displayUnit($selected)['label'] }}</p><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><div class="order-description">{{ strip_tags($selected->description ?? '') }}</div></section>
 </div>
 @else
 <div class="catalogue-list" id="list">
 @if($search !== '' || $category)
-@forelse($listed as $service)<a href="{{ $linkTo(['service'=>$service->id]) }}"><span class="network-icon" data-network="{{ strtolower(optional(optional($service->category)->socialMedia)->name ?: 'Other') }}">@include('rentals.order-platform-icon',['title'=>optional(optional($service->category)->socialMedia)->name ?: 'Other'])</span><span class="row-copy">{{ \App\Services\SmartImport::cleanName($service->service_title) }}<small>Min {{ number_format($service->min_amount) }} · Max {{ number_format($service->max_amount) }}</small></span><span class="row-price">{{ $money($service->panel_price) }}<small style="display:block;color:var(--muted)">{{ \App\Services\PanelRentals::quantityBased($service) ? 'per 1,000' : 'per item' }}</small></span><span class="row-arrow" aria-hidden="true">›</span></a>@empty<p>No services found.</p>@endforelse
+@forelse($listed as $service)<a href="{{ $linkTo(['service'=>$service->id]) }}"><span class="network-icon" data-network="{{ strtolower(optional(optional($service->category)->socialMedia)->name ?: 'Other') }}">@include('rentals.order-platform-icon',['title'=>optional(optional($service->category)->socialMedia)->name ?: 'Other'])</span><span class="row-copy">{{ \App\Services\SmartImport::cleanName($service->service_title) }}<small>Min {{ number_format($service->min_amount) }} · Max {{ number_format($service->max_amount) }}</small></span><span class="row-price">{{ $displayMoney($service->panel_price * $displayUnit($service)['factor']) }}<small style="display:block;color:var(--muted)">{{ $displayUnit($service)['label'] }}</small></span><span class="row-arrow" aria-hidden="true">›</span></a>@empty<p>No services found.</p>@endforelse
 @elseif($network)
 @forelse($categories as $id=>$items)<a href="{{ $linkTo(['network'=>$network,'category'=>$id]) }}"><span class="network-icon" data-network="{{ strtolower($network) }}">@include('rentals.order-platform-icon',['title'=>$network])</span><span class="row-copy">{{ $items->first()->category->category_title }}</span><span class="row-arrow" aria-hidden="true">›</span></a>@empty<p>No categories are available.</p>@endforelse
 @else
