@@ -49,7 +49,16 @@ class FrontendController extends Controller
                 ->firstOrFail();
 
             $footer = footerData();
-            $pageSeo = $this->pageSeoData($slug, $selectedTheme);
+            $pageSeo = $this->pageSeoData($slug, $selectedTheme) ?: [];
+            if ($slug === '/') {
+                $siteTitle = basicControl()->site_title ?: 'Mass Fame Shop';
+                $pageSeo['page_title'] = __('Home');
+                $pageSeo['meta_title'] = "Best SMM Panel in Africa & Kenya | {$siteTitle} - Cheapest SMM Provider";
+                $pageSeo['meta_description'] = "{$siteTitle} is Africa and Kenya's #1 best and cheapest SMM panel. Buy real Instagram followers, likes, TikTok views, YouTube watch hours and Facebook likes with instant automated Lipa Na M-Pesa STK push. 24/7 delivery worldwide.";
+                $existingKw = !empty($pageSeo['meta_keywords']) ? $pageSeo['meta_keywords'] . ',' : '';
+                $pageSeo['meta_keywords'] = 'best smm in africa,best smm panel kenya,cheapest smm panel kenya,smm panel mpesa,smm provider africa,buy instagram followers kenya mpesa,buy tiktok views kenya,youtube subscribers kenya,smm reseller panel africa,cheap smm panel worldwide,' . $existingKw;
+                $pageSeo['meta_robots'] = 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+            }
             $sectionsData = $this->getSectionsData($pageDetails->sections, $pageDetails->content, $selectedTheme);
 
             return view("themes.{$selectedTheme}.page", compact('sectionsData', 'pageSeo', 'footer'));

@@ -15,10 +15,15 @@ class ServiceController extends Controller
 
     public function services()
     {
-
+        $siteTitle = basicControl()->site_title ?: 'Mass Fame Shop';
         $data['footer'] = footerData();
         $data['socialMedia'] = SocialMedia::has('category')->with('category')->orderBy('sort_by', 'asc')->get();
-        $data['pageSeo'] = $this->pageSeoData('services', basicControl()->theme);
+        $data['pageSeo'] = $this->pageSeoData('services', basicControl()->theme) ?: [];
+        $data['pageSeo']['page_title'] = __('Services & Pricing - Best SMM in Africa & Kenya');
+        $data['pageSeo']['meta_title'] = "SMM Services & Live Pricing | Best SMM in Africa & Kenya - {$siteTitle}";
+        $data['pageSeo']['meta_description'] = "Explore transparent, live prices for Instagram followers, likes, TikTok views, YouTube watch hours and Facebook engagement on {$siteTitle}. Africa's #1 cheapest SMM provider.";
+        $data['pageSeo']['meta_keywords'] = 'best smm in africa, best smm panel kenya, smm services pricing, buy followers cheap, smm panel mpesa, mass fame shop';
+        $data['pageSeo']['meta_robots'] = 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
         return view(template() . 'service', $data);
     }
 
