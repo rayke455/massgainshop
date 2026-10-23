@@ -10,21 +10,24 @@ class Payment
     public static function prepareData($deposit, $gateway)
     {
         $postParams = [
-            'amount'      => $deposit->payable_amount,
+            'amount'      => (string) $deposit->payable_amount,
             'currency'    => $deposit->payment_method_currency,
-            'order_id'    => $deposit->trx_id,
+            'order_id'    => (string) $deposit->trx_id,
             'url_return'  => route('user.add.fund'),
             'url_success' => route('user.order.create'),
             'url_callback'=> route('ipn', [$gateway->code, $deposit->trx_id]),
         ];
 
-        $sign = md5(base64_encode(json_encode($postParams)) . $gateway->parameters->api_key);
+        $jsonData = json_encode($postParams, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $apiKey = trim($gateway->parameters->api_key ?? '');
+        $merchantId = trim($gateway->parameters->mercent_id ?? '');
+        $sign = md5(base64_encode($jsonData) . $apiKey);
 
         $response = Http::withHeaders([
-            'Merchant'     => $gateway->parameters->mercent_id,
-            'Sign'         => $sign,
+            'merchant'     => $merchantId,
+            'sign'         => $sign,
             'Content-Type' => 'application/json',
-        ])->post('https://api.cryptomus.com/v1/payment', $postParams);
+        ])->withBody($jsonData, 'application/json')->post('https://api.cryptomus.com/v1/payment');
 
         if ($response->successful() && isset($response['result']['url'])) {
             return json_encode([
@@ -33,9 +36,14 @@ class Payment
             ]);
         }
 
+        \Illuminate\Support\Facades\Log::error('Cryptomus payment creation failed', [
+            'status' => $response->status(),
+            'body' => $response->json(),
+        ]);
+
         return json_encode([
             'error'   => true,
-            'message' => 'Unexpected Error! Please Try Again',
+            'message' => $response->json('message') ?? 'Unexpected Error! Please Try Again',
         ]);
     }
 
@@ -43,16 +51,19 @@ class Payment
     public static function ipn($request, $gateway, $deposit = null, $trx = null, $type = null)
     {
         $postParams = [
-            'order_id' => $deposit->trx_id,
+            'order_id' => (string) $deposit->trx_id,
         ];
 
-        $sign = md5(base64_encode(json_encode($postParams)) . $gateway->parameters->api_key);
+        $jsonData = json_encode($postParams, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $apiKey = trim($gateway->parameters->api_key ?? '');
+        $merchantId = trim($gateway->parameters->mercent_id ?? '');
+        $sign = md5(base64_encode($jsonData) . $apiKey);
 
         $response = Http::withHeaders([
-            'Merchant'     => $gateway->parameters->mercent_id,
-            'Sign'         => $sign,
+            'merchant'     => $merchantId,
+            'sign'         => $sign,
             'Content-Type' => 'application/json',
-        ])->post('https://api.cryptomus.com/v1/payment/info', $postParams);
+        ])->withBody($jsonData, 'application/json')->post('https://api.cryptomus.com/v1/payment/info');
 
         if ($response->successful() && isset($response['result']) &&
             in_array($response['result']['payment_status'], ['paid', 'paid_over'])) {
@@ -65,6 +76,11 @@ class Payment
                 'redirect' => route('success'),
             ];
         }
+
+        \Illuminate\Support\Facades\Log::warning('Cryptomus IPN check unfulfilled', [
+            'order_id' => $deposit->trx_id,
+            'response' => $response->json(),
+        ]);
 
         return [
             'status'   => 'error',

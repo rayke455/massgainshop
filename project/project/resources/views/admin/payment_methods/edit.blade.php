@@ -174,6 +174,12 @@
                                                                 'webhook_secret' => __('Settings → Webhook Secret (whsec_…). Optional: used to verify notifications.'),
                                                             ][$key] ?? '' }}</small>
                                                         @endif
+                                                        @if($method->code === 'cryptomus')
+                                                            <small class="text-muted">{{ [
+                                                                'mercent_id' => __('Your Cryptomus Merchant ID (from Cryptomus Dashboard → Profile/Merchant Settings).'),
+                                                                'api_key' => __('Your Cryptomus Payment API Key (Generated under Integration/API in your Cryptomus account).'),
+                                                            ][$key] ?? '' }}</small>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach
