@@ -8,9 +8,9 @@
                         class="bi bi-box-arrow-in-right"></i> @lang('Login As User')</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="get" action="" class="loginAccountAction" enctype="multipart/form-data">
+            <form method="post" action="" class="loginAccountAction">@csrf
                 <div class="modal-body">
-                    @lang('Do you want to really login as user?')
+                    @lang('Open a read-only support session as this user? Access is audited and expires after 30 minutes.')
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-white" data-bs-dismiss="modal">@lang('No')</button>

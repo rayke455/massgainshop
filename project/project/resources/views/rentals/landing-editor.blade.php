@@ -1,4 +1,5 @@
 @extends('rentals.layout')
+@include('rentals.owner-subpage')
 @section('title', 'Landing page designer')
 @section('nav')<a href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias') : route('user.panels.show', $panel->id) }}">Back to control panel</a>@endsection
 @section('content')

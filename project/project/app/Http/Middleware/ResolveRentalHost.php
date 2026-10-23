@@ -22,7 +22,9 @@ class ResolveRentalHost {
     public function handle(Request $request, Closure $next) {
         $host = strtolower($request->getHost());
         $mainHost = strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
-        if ($host === $mainHost || !Schema::hasTable('rental_panels')) {
+        if ($request->is('support-session/stop')) return $next($request);
+        $supportPanel = $request->attributes->get('support_panel');
+        if (!$supportPanel && ($host === $mainHost || !Schema::hasTable('rental_panels'))) {
             // Panel customers' accounts only work on their panel.
             if ($request->hasSession() && Auth::check() && Auth::user()->rental_panel_id) {
                 Auth::logout();
@@ -31,7 +33,7 @@ class ResolveRentalHost {
             }
             return $next($request);
         }
-        $panel = RentalPanel::with('owner')->where('subdomain', $host)->orWhere('custom_domain', $host)->first();
+        $panel = $supportPanel ?: RentalPanel::with('owner')->where('subdomain', $host)->orWhere('custom_domain', $host)->first();
         if (!$panel) return $next($request);
         abort_unless($panel->available(), 403, 'This panel is currently unavailable.');
         if ($host === $panel->custom_domain) abort_unless($panel->domain_verified_at && $panel->allows('custom_domain'), 403, 'This domain is not active.');

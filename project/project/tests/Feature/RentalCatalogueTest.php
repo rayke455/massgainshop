@@ -51,6 +51,8 @@ class RentalCatalogueTest extends TestCase
     {
         [$user, $panel, $network, $category, $service] = $this->fixture();
         auth()->logout();
+        $this->app->forgetInstance('rental.panel');
+        auth()->logout();
         $this->get('/rental-preview?shop=1')->assertOk()->assertSee('Select network')->assertDontSee('id="orderForm"', false);
         $this->get('/rental-preview?shop=1&network=Instagram')->assertOk()->assertSee('Test Likes')->assertDontSee('id="orderForm"', false);
         $this->get('/rental-preview?shop=1&network=Instagram&category='.$category->id)->assertOk()->assertSee('Test real service')->assertDontSee('id="orderForm"', false);

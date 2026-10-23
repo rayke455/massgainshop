@@ -377,7 +377,7 @@ Route::middleware(['CheckModuleIsEnable'])->group(function () {
                 Route::delete('frontend/contents/delete/{id}', [ContentController::class, 'ContentDelete'])->name('content.item.delete');
 
                 /*====Manage Users ====*/
-                Route::get('login/as/user/{id}', [UsersController::class, 'loginAsUser'])->name('login.as.user');
+                Route::post('login/as/user/{id}', [UsersController::class, 'loginAsUser'])->whereNumber('id')->middleware('throttle:10,1')->name('login.as.user');
                 Route::post('block-profile/{id}', [UsersController::class, 'blockProfile'])->name('block.profile');
                 Route::get('users', [UsersController::class, 'index'])->name('users');
                 Route::get('users/search', [UsersController::class, 'search'])->name('users.search');

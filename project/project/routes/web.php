@@ -231,6 +231,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::get('rental-preview', [\App\Http\Controllers\PanelRentalController::class, 'preview'])->middleware('throttle:60,1')->name('rental.preview.public');
 Route::get('rental-preview/customer', [\App\Http\Controllers\PanelRentalController::class, 'customerPreview'])->middleware('throttle:60,1')->name('rental.preview.customer');
 Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController::class, 'ownerPreview'])->middleware('throttle:60,1')->name('rental.preview.alias');
+    Route::post('support-session/stop', [\App\Http\Controllers\Admin\UsersController::class, 'stopSupportSession'])->middleware('auth:admin')->name('support-session.stop');
     Route::middleware(['auth', 'userCheck'])->prefix('user/panels')->name('user.panels.')->group(function () {
         Route::get('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'index'])->whereNumber('panelId')->name('landing');
         Route::post('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('landing.store');

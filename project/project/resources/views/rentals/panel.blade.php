@@ -1,7 +1,9 @@
 @extends('rentals.layout')
 @section('title', 'Tenant control panel')
+@section('owner-panel', '1')
 @include('rentals.control-style')
 @include('rentals.owner-orders-style')
+@include('rentals.owner-shell-style')
 @section('brand', $panel->subdomain ?: $panel->name)
 @section('nav')<a href="{{ ($ownerPreview ?? false) ? route('rental.preview.customer') : route('user.panels.index') }}">{{ ($ownerPreview ?? false) ? 'Customer preview' : 'All my panels' }}</a>@endsection
 @section('content')
@@ -18,22 +20,34 @@
     <div><strong>{{ number_format($serviceTotal) }}</strong><small>Services</small></div>
     <div><strong>{{ number_format($earnings, 2) }} {{ $base }}</strong><small>Earnings</small></div>
 </div>
-<nav class="tenant-tabs" aria-label="Tenant workspace">
-    @if($panel->allows('accounts'))<a data-control-link href="#customers">Users</a>@endif
-    <a data-control-link href="#orders">Orders</a>
-    @if($panel->allows('catalogue'))<a data-control-link href="#services">Services</a>@endif
-    <a data-control-link href="#statistics">Statistics</a>
-    @if($panel->allows('accounts'))<a href="{{ ($ownerPreview ?? false) ? route('rental.preview.alias', ['screen' => 'support']) : route('user.panels.support', $panel->id) }}">Customer support</a>@endif
-    <a data-control-link href="#payments">Payments</a>
-    <a data-control-link href="#general">Control panel</a>
-</nav>
 @include('rentals.control-navigation')
 <p class="owner-panel-meta"><span class="tag">{{ $panel->available() ? 'Active' : ($panel->status === 'active' ? 'Expired' : ucfirst($panel->status)) }}</span> · Paid until {{ $panel->expires_at->format('d M Y H:i') }}</p>
 <p class="owner-panel-meta">Your panel: <a href="{{ ($ownerPreview ?? false) ? route('rental.preview.public') : ($panel->available() ? route('panels.show', $panel->slug) : '#') }}" target="_blank" rel="noopener"><strong>{{ ($ownerPreview ?? false) ? 'Sample storefront' : $url }}</strong></a>
     @if($panel->subdomain)<br><small>Before your domain is live (DNS), it also works at <a href="{{ route('panels.show', $panel->slug) }}" target="_blank" rel="noopener">{{ url('/panels/' . $panel->slug) }}</a></small>@endif</p>
 
+<section id="general" class="tenant-section owner-settings" aria-label="General settings">
+    <h1>General settings</h1>
+    <h3>Registration</h3>
+    <a class="settings-row" data-control-link href="#branding"><span>Registration settings</span><span>{{ $panel->workspace()['registration'] ? 'Enabled' : 'Disabled' }} ›</span></a>
+    @if($panel->allows('accounts'))
+    <a class="settings-row" data-control-link href="#branding"><span>Custom registration fields</span><span>Configure fields ›</span></a>
+    @endif
+    <h3>Extra features</h3>
+    @if($panel->allows('catalogue'))<a class="settings-row" data-control-link href="#services"><span>@include('rentals.control-icon', ['name'=>'list']) Services settings</span><span>{{ number_format($serviceTotal) }} services ›</span></a>@endif
+    <a class="settings-row" href="{{ ($ownerPreview ?? false) ? route('rental.preview.public', ['shop'=>1]) : route('panels.show', ['slug'=>$panel->slug, 'shop'=>1]) }}"><span>@include('rentals.control-icon', ['name'=>'cart']) Guest ordering</span><span>Open storefront ›</span></a>
+    <a class="settings-row" data-control-link href="#payments"><span>@include('rentals.control-icon', ['name'=>'wallet']) Payments & earnings</span><span>Manage ›</span></a>
+    @if($panel->allows('branding'))
+    <h3>Meta data</h3>
+    <a class="settings-row" data-control-link href="#branding"><span>Branding and search engine settings</span><span>Configure ›</span></a>
+    @endif
+    <h3>Domain settings</h3>
+    <a class="settings-row" data-control-link href="#domains"><span>DNS settings</span><span>Domains & subscription ›</span></a>
+    <h3>Other</h3>
+    <a class="settings-row" data-control-link href="#branding"><span>Show customer order count</span><span>{{ $panel->workspace()['show_orders'] ? 'Enabled' : 'Disabled' }} ›</span></a>
+    <a class="settings-row" data-control-link href="#branding"><span>Show user spent</span><span>{{ $panel->workspace()['show_spent'] ? 'Enabled' : 'Disabled' }} ›</span></a>
+</section>
 {{-- ===== Branding & settings + live preview ===== --}}
-<section id="general" class="tenant-section" aria-label="General settings">
+<section id="branding" class="tenant-section" aria-label="Branding and registration settings">
 <div class="grid">
     <div class="card">
         <h2>Branding & settings</h2>
@@ -265,14 +279,13 @@
         const links = [...document.querySelectorAll('[data-control-link]')];
         const home = document.getElementById('tenant-control');
         function navigate() {
-            const key = location.hash.slice(1);
-            document.body.classList.toggle('owner-orders-screen', key === 'orders');
-            const selected = sections.find(section => section.id === key);
+            const key = location.hash.slice(1) || 'general';
+            const selected = sections.find(section => section.id === key) || document.getElementById('general');
             sections.forEach(section => section.hidden = selected ? section !== selected : true);
-            home.hidden = !!selected;
-            document.getElementById('control-back').hidden = !selected;
+            home.hidden = false;
+            document.getElementById('control-back').hidden = true;
             links.forEach(link => {
-                if (link.hash === location.hash) link.setAttribute('aria-current', 'page');
+                if (link.hash === '#' + selected.id) link.setAttribute('aria-current', 'page');
                 else link.removeAttribute('aria-current');
             });
         }

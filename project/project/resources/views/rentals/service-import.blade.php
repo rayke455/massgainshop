@@ -1,6 +1,6 @@
 @extends('rentals.layout')
 @section('title', 'Import services')
-@include('rentals.control-style')
+@include('rentals.owner-subpage')
 @section('nav')<a href="{{ route('user.panels.show', $panel->id) }}#services">Back to services</a>@endsection
 @section('content')
 <h1>Import services</h1><p>Provider: <strong>Mass Panel Shop</strong>. Imports affect only {{ $panel->name }}.</p>

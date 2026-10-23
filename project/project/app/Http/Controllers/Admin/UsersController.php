@@ -864,8 +864,14 @@ class UsersController extends Controller
 
     public function loginAsUser($id)
     {
-        Auth::guard('web')->loginUsingId($id);
+        \App\Services\AdminSupportSession::start((int)$id);
         return redirect()->route('user.dashboard');
+    }
+
+    public function stopSupportSession()
+    {
+        \App\Services\AdminSupportSession::end();
+        return redirect()->route('admin.dashboard');
     }
 
 

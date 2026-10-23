@@ -1,5 +1,5 @@
 @extends('rentals.layout')
-@include('rentals.control-style')
+@include('rentals.owner-subpage')
 @section('title', 'Support · '.$panel->name)
 @section('brand', $panel->name)
 @section('nav')
