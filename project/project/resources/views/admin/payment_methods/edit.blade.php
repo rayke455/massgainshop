@@ -180,6 +180,13 @@
                                                                 'api_key' => __('Your Cryptomus Payment API Key (Generated under Integration/API in your Cryptomus account).'),
                                                             ][$key] ?? '' }}</small>
                                                         @endif
+                                                        @if($method->code === 'payzink')
+                                                            <small class="text-muted">{{ [
+                                                                'publishable_key' => __('Your Payzink Publishable Key (from Payzink Console console.payzink.com → API Keys).'),
+                                                                'secret_key' => __('Your Payzink Secret Key (from Payzink Console console.payzink.com → API Keys).'),
+                                                                'environment' => __('Set to "live" for real payments, or "sandbox" for test mode.'),
+                                                            ][$key] ?? '' }}</small>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach
