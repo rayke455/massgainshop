@@ -15,9 +15,9 @@ return new class extends Migration
         $existing = Gateway::where('code', 'payzink')->first();
 
         if (!$existing) {
-            $nextId = (int) (Gateway::where('id', '<', 1000)->max('id') ?: 51) + 1;
+            $nextId = 52;
 
-            Gateway::create([
+            \Illuminate\Support\Facades\DB::table('gateways')->insert([
                 'id' => $nextId,
                 'name' => 'Payzink',
                 'code' => 'payzink',

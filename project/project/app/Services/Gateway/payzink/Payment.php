@@ -2,6 +2,7 @@
 
 namespace App\Services\Gateway\payzink;
 
+use App\Models\Deposit;
 use Facades\App\Services\BasicService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -28,7 +29,7 @@ class Payment
             ]);
             return json_encode([
                 'error' => true,
-                'message' => 'Unable to connect to Payzink gateway. Please verify your API keys.',
+                'message' => 'Unable to connect to Payzink gateway. Please verify your API keys in Admin -> Payment Methods.',
             ]);
         }
 
@@ -50,6 +51,9 @@ class Payment
             ],
             '_links' => [
                 'notificationUrl' => $callbackUrl,
+                'redirectUrl' => $callbackUrl,
+                'returnUrl' => $callbackUrl,
+                'cancelUrl' => route('failed'),
             ],
         ];
 
@@ -76,6 +80,9 @@ class Payment
             $reference = $res['result']['reference'] ?? null;
             if ($reference) {
                 Cache::put('payzink_ref_' . $deposit->trx_id, $reference, now()->addDays(2));
+                Cache::put('payzink_trx_' . $reference, $deposit->trx_id, now()->addDays(2));
+                $deposit->payment_id = $reference;
+                $deposit->save();
             }
 
             return json_encode([
@@ -107,8 +114,33 @@ class Payment
 
         $baseUrl = self::getBaseUrl($environment);
 
+        // If deposit is missing, attempt to find by trx
+        if (!$deposit && $trx) {
+            $deposit = Deposit::where('trx_id', $trx)->first();
+        }
+
         // 1. Resolve transaction reference
-        $reference = self::resolveReference($request, $deposit ? $deposit->trx_id : $trx);
+        $reference = self::resolveReference($request, $deposit ? $deposit->trx_id : $trx, $deposit);
+
+        // If deposit is still missing, lookup by resolved reference
+        if (!$deposit && $reference) {
+            $deposit = Deposit::where('payment_id', $reference)->first();
+            if (!$deposit) {
+                $cachedTrx = Cache::get('payzink_trx_' . $reference);
+                if ($cachedTrx) {
+                    $deposit = Deposit::where('trx_id', $cachedTrx)->first();
+                }
+            }
+        }
+
+        // Check if transaction is already completed
+        if ($deposit && $deposit->status == 1) {
+            return [
+                'status' => 'success',
+                'msg' => 'Transaction has already been completed successfully.',
+                'redirect' => route('success'),
+            ];
+        }
 
         if (!$reference) {
             Log::warning('Payzink IPN received without identifiable reference', [
@@ -118,7 +150,16 @@ class Payment
 
             return [
                 'status' => 'error',
-                'msg' => 'Invalid transaction reference.',
+                'msg' => 'No active payment transaction found. If you completed a payment, it may take a few moments to confirm.',
+                'redirect' => route('failed'),
+            ];
+        }
+
+        if (!$publishableKey || !$secretKey) {
+            Log::error('Payzink API keys not configured in Admin -> Payment Methods', ['gateway_id' => $gateway->id]);
+            return [
+                'status' => 'error',
+                'msg' => 'Payzink gateway is not yet fully configured with API keys.',
                 'redirect' => route('failed'),
             ];
         }
@@ -128,7 +169,7 @@ class Payment
         if (!$accessToken) {
             return [
                 'status' => 'error',
-                'msg' => 'Unable to authenticate with Payzink.',
+                'msg' => 'Unable to authenticate with Payzink gateway.',
                 'redirect' => route('failed'),
             ];
         }
@@ -141,12 +182,13 @@ class Payment
         ])->get($baseUrl . '/api/v1/payment/transaction/' . $reference . '/info');
 
         $info = $response->json();
-        $state = data_get($info, 'result.state');
+        $state = strtoupper((string) data_get($info, 'result.state', ''));
 
         Log::info('Payzink verification response', [
             'trx' => $deposit->trx_id ?? $trx,
             'reference' => $reference,
             'state' => $state,
+            'response' => $info,
         ]);
 
         if (in_array($state, ['PURCHASED', 'CAPTURED', 'AUTHORISED', 'PAID'], true)) {
@@ -161,9 +203,17 @@ class Payment
             ];
         }
 
+        if (in_array($state, ['PENDING', 'INITIATED', 'PROCESSING', 'AUTHENTICATING'], true)) {
+            return [
+                'status' => 'warning',
+                'msg' => 'Your payment is processing. Your account will update automatically once confirmed.',
+                'redirect' => route('success'),
+            ];
+        }
+
         return [
             'status' => 'error',
-            'msg' => 'Transaction state: ' . ($state ?: 'unfulfilled'),
+            'msg' => 'Transaction state: ' . ($state ?: 'unsuccessful'),
             'redirect' => route('failed'),
         ];
     }
@@ -210,9 +260,9 @@ class Payment
     }
 
     /**
-     * Resolve reference from query parameters, body, or cache.
+     * Resolve reference from query parameters, body, deposit, or cache.
      */
-    protected static function resolveReference($request, ?string $trxId): ?string
+    protected static function resolveReference($request, ?string $trxId, $deposit = null): ?string
     {
         $all = $request->all();
 
@@ -220,6 +270,9 @@ class Payment
             $request->input('pz_reference'),
             $request->input('reference'),
             $request->input('ref'),
+            $request->input('id'),
+            $request->input('transaction_id'),
+            $request->input('payment_id'),
             data_get($all, 'result.reference'),
             data_get($all, 'data.reference'),
             data_get($all, 'transaction.reference'),
@@ -227,6 +280,10 @@ class Payment
             if (is_string($candidate) && trim($candidate) !== '') {
                 return trim($candidate);
             }
+        }
+
+        if ($deposit && !empty($deposit->payment_id)) {
+            return trim($deposit->payment_id);
         }
 
         if ($trxId) {
