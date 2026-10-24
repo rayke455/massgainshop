@@ -178,7 +178,7 @@
     <link rel="stylesheet" href="{{ asset('assets/global/css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/fancybox.css') }}">
     <link rel="stylesheet" href="{{ asset(template(true). 'css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset(template(true). 'css/zirka.css') }}">
+    <link rel="stylesheet" href="{{ asset(template(true). 'css/zirka.css') }}?v={{ filemtime(base_path(template(true). 'css/zirka.css')) }}">
     <script>document.documentElement.classList.add('zk-js');</script>
 
     @stack('css-lib')

@@ -195,11 +195,17 @@ if (!function_exists('themeColor')) {
 if (!function_exists('checkTo')) {
     function checkTo($currencies, $selectedCurrency = 'USD')
     {
+        if (empty($currencies)) {
+            return false;
+        }
         foreach ($currencies as $key => $currency) {
-            if (property_exists($currency, strtoupper($selectedCurrency))) {
+            if (is_object($currency) && property_exists($currency, strtoupper($selectedCurrency))) {
+                return $key;
+            } elseif (is_array($currency) && array_key_exists(strtoupper($selectedCurrency), $currency)) {
                 return $key;
             }
         }
+        return false;
     }
 }
 
@@ -343,8 +349,12 @@ if (!function_exists('kebab2Title')) {
 if (!function_exists('getMethodCurrency')) {
     function getMethodCurrency($gateway)
     {
+        if (empty($gateway->currencies)) {
+            return $gateway->currency ?? 'USD';
+        }
         foreach ($gateway->currencies as $key => $currency) {
-            if (property_exists($currency, $gateway->currency)) {
+            $hasProp = is_object($currency) ? property_exists($currency, $gateway->currency) : (is_array($currency) && array_key_exists($gateway->currency, $currency));
+            if ($hasProp) {
                 if ($key == 0) {
                     return $gateway->currency;
                 } else {
@@ -352,6 +362,7 @@ if (!function_exists('getMethodCurrency')) {
                 }
             }
         }
+        return $gateway->currency ?? 'USD';
     }
 }
 

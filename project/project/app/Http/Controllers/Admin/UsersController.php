@@ -939,6 +939,21 @@ class UsersController extends Controller
         }
     }
 
+    public function mailAllUser()
+    {
+        return view('admin.user_management.mail_all_user');
+    }
+
+    public function emailToUsers()
+    {
+        return view('admin.user_management.mail_all_user');
+    }
+
+    public function sendEmailToUsers(Request $request)
+    {
+        return $this->sendMailUser($request, null);
+    }
+
     public function customRate($id)
     {
         $user = User::with('serviceRates', 'serviceRates.service:id,service_title,price')->findOrFail($id);

@@ -54,11 +54,46 @@ class Gateway extends Model
 
     public function countGatewayCurrency()
     {
-        $currencyLists = $this->currencies->{0} ?? $this->currencies->{1};
-        $count = 0;
-        foreach ($currencyLists as $currency) {
-            $count++;
+        if (empty($this->currencies)) {
+            return 0;
         }
-        return $count;
+
+        $currencyLists = null;
+        if (is_array($this->currencies)) {
+            $currencyLists = $this->currencies[0] ?? $this->currencies[1] ?? $this->currencies;
+        } elseif (is_object($this->currencies)) {
+            $currencyLists = $this->currencies->{0} ?? $this->currencies->{1} ?? $this->currencies;
+        }
+
+        if (empty($currencyLists)) {
+            return 0;
+        }
+
+        if (is_array($currencyLists) || is_countable($currencyLists)) {
+            return count($currencyLists);
+        }
+
+        if (is_object($currencyLists)) {
+            return count(get_object_vars($currencyLists));
+        }
+
+        return 0;
+    }
+
+    public function countSupportedCurrency()
+    {
+        if (empty($this->supported_currency)) {
+            return 0;
+        }
+
+        if (is_array($this->supported_currency) || is_countable($this->supported_currency)) {
+            return count($this->supported_currency);
+        }
+
+        if (is_object($this->supported_currency)) {
+            return count(get_object_vars($this->supported_currency));
+        }
+
+        return 0;
     }
 }

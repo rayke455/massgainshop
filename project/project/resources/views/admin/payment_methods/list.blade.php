@@ -106,7 +106,7 @@
                                         </td>
                                         <td>
                                             <span
-                                                class="badge bg-soft-dark text-dark">@lang(count($method->supported_currency ?? 0))</span>
+                                                class="badge bg-soft-dark text-dark">{{$method->countSupportedCurrency()}}</span>
                                         </td>
                                         <td>
                                             {{ Str::limit($method->description, 32) }}

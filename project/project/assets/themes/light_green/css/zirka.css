@@ -206,7 +206,7 @@ a { transition: color .2s var(--zk-ease); }
     box-shadow: 0 6px 20px -14px rgba(15, 23, 42, .25);
 }
 
-.zk-nav .navbar-brand { width: 180px; flex: 0 0 180px; margin-right: 20px; }
+.zk-nav .navbar-brand { width: 180px; min-width: 0; max-width: 180px; flex: 0 0 180px; margin-right: 20px; }
 .zk-nav .logo img { display: block; height: auto; width: 100%; max-width: 180px; max-height: 44px; object-fit: contain; }
 .zk-nav > .container { gap: 12px; }
 .zk-nav .nav-right { flex-shrink: 0; }
@@ -258,6 +258,11 @@ a { transition: color .2s var(--zk-ease); }
 }
 
 .zk-nav .offcanvas { background: var(--zk-surface); }
+@media (min-width: 1400px) {
+    .zk-nav.navbar-expand-xxl .navbar-toggler { display: none !important; }
+    .zk-nav > .container { flex-wrap: nowrap; }
+    .zk-nav > .container > .offcanvas { flex: 1 1 auto; min-width: 0; }
+}
 .zk-rental-invite { display:flex; align-items:center; gap:12px; max-width:470px; margin:22px 0; padding:15px 18px; background:rgba(255,255,255,.8); border:1px solid #dbe3f5; border-radius:16px; text-decoration:none; color:#17213a; text-align:left; }
 .zk-rental-invite__icon { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; background:#eaf0ff; color:#2454dc; border-radius:12px; }
 .zk-rental-invite>span:nth-child(2) { flex:1; min-width:0; }

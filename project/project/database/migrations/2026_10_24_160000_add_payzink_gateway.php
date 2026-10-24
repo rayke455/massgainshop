@@ -25,20 +25,20 @@ return new class extends Migration
                 'sort_by' => $nextId,
                 'driver' => 'local',
                 'image' => 'gateway/payzink.webp',
-                'parameters' => [
+                'parameters' => json_encode([
                     'publishable_key' => '',
                     'secret_key' => '',
                     'environment' => 'live',
-                ],
-                'currencies' => [
+                ]),
+                'currencies' => json_encode([
                     '0' => [
                         'USD' => 'USD',
                         'EUR' => 'EUR',
                         'AED' => 'AED',
                         'GBP' => 'GBP',
                     ],
-                ],
-                'supported_currency' => ['USD', 'EUR', 'AED', 'GBP'],
+                ], JSON_FORCE_OBJECT),
+                'supported_currency' => json_encode(['USD', 'EUR', 'AED', 'GBP']),
                 'receivable_currencies' => [
                     [
                         'name' => 'USD',
