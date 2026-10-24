@@ -939,11 +939,6 @@ class UsersController extends Controller
         }
     }
 
-    public function mailAllUser()
-    {
-        return view('admin.user_management.mail_all_user');
-    }
-
     public function emailToUsers()
     {
         return view('admin.user_management.mail_all_user');
