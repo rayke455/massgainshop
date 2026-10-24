@@ -762,4 +762,53 @@ class ServiceController extends Controller
         }
         return $platforms['other'] ?? $platforms['others'];
     }
+
+    /**
+     * Delete a single service.
+     */
+    public function destroy(string $id)
+    {
+        try {
+            $service = Service::findOrFail($id);
+            $service->delete();
+
+            return back()->with('success', 'Service deleted successfully.');
+        } catch (\Exception $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+    }
+
+    /**
+     * Delete multiple selected services via AJAX.
+     */
+    public function deleteMultiple(Request $request)
+    {
+        if (empty($request->strIds)) {
+            session()->flash('error', 'You did not select any service.');
+            return response()->json(['error' => 1]);
+        }
+
+        try {
+            Service::whereIn('id', (array) $request->strIds)->delete();
+            session()->flash('success', 'Selected services have been deleted successfully.');
+            return response()->json(['success' => 1]);
+        } catch (\Exception $exception) {
+            session()->flash('error', $exception->getMessage());
+            return response()->json(['error' => 1]);
+        }
+    }
+
+    /**
+     * Delete all services.
+     */
+    public function deleteAll()
+    {
+        try {
+            Service::query()->delete();
+            return back()->with('success', 'All services have been deleted successfully.');
+        } catch (\Exception $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+    }
 }
+
