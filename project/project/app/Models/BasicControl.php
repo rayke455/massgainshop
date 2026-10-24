@@ -11,6 +11,7 @@ class BasicControl extends Model
     use HasFactory;
 
     protected $fillable = [
+        'activity_popup_enabled',
         'theme', 'user_dashboard', 'site_title', 'primary_color', 'secondary_color', 'time_zone', 'base_currency', 'currency_symbol',
         'admin_prefix', 'is_currency_position', 'has_space_between_currency_and_amount', 'is_force_ssl', 'is_maintenance_mode',
         'paginate', 'strong_password', 'registration', 'fraction_number', 'sender_email', 'sender_email_name', 'email_description',

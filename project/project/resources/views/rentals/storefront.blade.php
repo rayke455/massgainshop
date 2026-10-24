@@ -23,7 +23,7 @@
     <title>{{ $panel->workspace()['seo_title'] ?: $brand }}</title>
     <meta name="description" content="{{ $panel->workspace()['seo_description'] ?: ($panel->tagline ?: __('Followers, likes and views delivered fast.')) }}">
     @if($preview)<meta name="robots" content="noindex">@endif
-    @if($logo)<link rel="icon" href="{{ $logo }}">@endif
+    @if($favicon = \App\Services\PanelRentals::logoUrl($panel, 'favicon'))<link rel="icon" href="{{ $favicon }}">@endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
     <style>

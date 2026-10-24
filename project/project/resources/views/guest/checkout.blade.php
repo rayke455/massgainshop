@@ -10,6 +10,44 @@ body{background:radial-gradient(ellipse at 10% 0%,#e8edff,transparent 55%),#f6f8
 </style>
 @endpush
 @section('content')
+@php
+    $network = (string) request('network', '');
+    $categoryId = (int) request('category', 0);
+    $selectedId = (int) old('service_id', request('service', 0));
+    $platformGroups = $services->groupBy(fn($s) => optional(optional($s->category)->socialMedia)->name ?: 'Other');
+    $networkServices = $platformGroups->get($network, collect());
+@endphp
+<nav class="guest-sidebar" aria-label="Guest navigation">
+<a class="active" href="{{ route('guest.order') }}"><span aria-hidden="true">＋</span> New order</a>
+<a href="{{ route('login') }}">Sign in</a><a href="{{ route('register') }}">Create account</a>
+<a href="{{ url('/contact') }}">Support</a><a href="{{ url('/') }}">Back to shop</a>
+</nav>
+@if(!$selectedId)
+<section class="network-browser">
+<div class="browser-top"><input type="search" id="networkSearch" placeholder="Search {{ $network ? 'categories' : 'platforms' }}" aria-label="Search selection"><span>Guest checkout · No account needed</span></div>
+@if($network)<a class="browse-back" href="{{ route('guest.order') }}">← All platforms</a>@endif
+@if($categoryId)<a class="browse-back" href="{{ route('guest.order', ['network' => $network]) }}">← Categories</a>@endif
+<h1>{{ $categoryId ? 'Select service' : ($network ?: 'Select network') }}</h1>
+<div class="network-rows">
+@if(!$network)
+@foreach($platformGroups as $title => $items)
+<a class="network-row" href="{{ route('guest.order', ['network' => $title]) }}"><span class="brand-icon" data-network="{{ strtolower($title) }}">@include('rentals.order-platform-icon', ['title' => $title])</span><strong>{{ $title }}</strong><span class="row-chevron">›</span></a>
+@endforeach
+@elseif(!$categoryId)
+@foreach($networkServices->groupBy('category_id') as $id => $items)
+<a class="network-row" href="{{ route('guest.order', ['network' => $network, 'category' => $id]) }}"><span class="brand-icon" data-network="{{ strtolower($network) }}">@include('rentals.order-platform-icon', ['title' => $network])</span><strong>{{ $items->first()->category->category_title }}</strong><span class="row-chevron">›</span></a>
+@endforeach
+@else
+@foreach($networkServices->where('category_id', $categoryId) as $item)
+<a class="network-row" href="{{ route('guest.order', ['network' => $network, 'category' => $categoryId, 'service' => $item->id]) }}"><span class="brand-icon" data-network="{{ strtolower($network) }}">@include('rentals.order-platform-icon', ['title' => $network])</span><strong>{{ \App\Services\SmartImport::cleanName($item->service_title) }}<small>KES {{ number_format((float)$item->price*$rate, 4) }} / 1,000 · Min {{ number_format($item->min_amount) }}</small></strong><span class="row-chevron">›</span></a>
+@endforeach
+@endif
+</div><p id="noMatches" class="muted" hidden>No matching results. Try another search.</p>
+@if($platformGroups->isEmpty() || ($network && $networkServices->isEmpty()))<p>No services are available in this selection.</p>@endif
+</section>
+<script>document.getElementById('networkSearch').addEventListener('input',function(){let found=0;document.querySelectorAll('.network-row').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(this.value.trim().toLowerCase());if(!row.hidden)found++;});document.getElementById('noMatches').hidden=found>0;});</script>
+@else
+<a class="browse-back" href="{{ route('guest.order', ['network' => $network, 'category' => $categoryId ?: null]) }}">← Choose another service</a>
 <div class="checkout-intro"><span class="checkout-eyebrow">Quick checkout · No signup needed</span><h1>Order without an account.</h1>
 <p>A few details. One secure payment. Choose your service below and follow its progress with your private tracking link.</p></div>
 <div class="grid">
@@ -50,9 +88,17 @@ document.getElementById('expectedTotal').value=pay;document.getElementById('orde
 document.getElementById('minimumSummary').hidden=!needsAccount;document.getElementById('accountConsentWrap').hidden=!needsAccount;document.getElementById('accountConsent').required=needsAccount;
 document.getElementById('paymentTotal').textContent='KES '+pay.toLocaleString();document.getElementById('walletRemainder').textContent='KES '+(pay-total).toLocaleString();
 document.getElementById('payButton').textContent='Pay KES '+pay.toLocaleString()+' with M-Pesa';}
-function filter(){const keep=options.filter(o=>(!platform.value||o.dataset.platform===platform.value)&&o.text.toLowerCase().includes(search.value.toLowerCase()));service.replaceChildren(...keep);update();document.getElementById('payButton').disabled=!keep.length||!@json($ready && $rate>0);}
-search.addEventListener('input',filter);platform.addEventListener('change',filter);service.addEventListener('change',update);quantity.addEventListener('input',update);update();
+function filter(){const selected=service.value;const keep=options.filter(o=>(!platform.value||o.dataset.platform===platform.value)&&o.text.toLowerCase().includes(search.value.toLowerCase()));service.replaceChildren(...keep);if(keep.some(o=>o.value===selected))service.value=selected;update();document.getElementById('payButton').disabled=!keep.length||!@json($ready && $rate>0);}
+search.addEventListener('input',filter);platform.addEventListener('change',filter);service.addEventListener('change',update);quantity.addEventListener('input',update);platform.value=service.selectedOptions[0]?.dataset.platform||'';filter();
 document.getElementById('guestOrder').addEventListener('submit',()=>{document.getElementById('payButton').disabled=true;document.getElementById('payButton').textContent='Starting payment…';});
 })();
 </script>
+@endif
 @endsection
+@push('styles')
+<style>
+body{background:#171f26;color:#d5dce2;font-family:Inter,Arial,sans-serif}header{max-width:none;margin:0 32px;border-color:#29323a;padding:20px 0}header a{color:#c5cdd5}header strong{width:210px}main{max-width:none;margin-left:230px;padding:26px 38px 70px}.guest-sidebar{position:absolute;left:24px;top:110px;width:190px;display:grid;gap:12px}.guest-sidebar a{padding:12px 18px;border-radius:28px;color:#c4ccd4;text-decoration:none;font-weight:600;font-size:15px}.guest-sidebar a.active{background:#252f39;color:#ff902e}.guest-sidebar a:hover{background:#252f39}.browser-top{display:flex;gap:20px;align-items:center;margin:4px 0 36px}.browser-top input[type=search]{max-width:380px;border:0;border-radius:28px;background:#242e38;color:#e0e5eb;padding:12px 20px}.browser-top>span{background:linear-gradient(110deg,#8057f4,#347ff3);border-radius:28px;padding:10px 20px;font-size:13px;color:#fff}.network-browser h1{font-size:22px;font-weight:600;margin:0 0 22px;letter-spacing:0}.network-row{display:flex;gap:20px;align-items:center;min-height:80px;padding:18px 0;border-top:1px solid #283139;text-decoration:none;color:#d5dce2}.network-row:hover{background:#202a33}.network-row strong{font-size:16px;font-weight:600;flex:1;min-width:0}.network-row small{font-size:12px;font-weight:400;margin-top:7px;color:#93a0ad}.row-chevron{border:1px solid #2c3741;border-radius:24px;font-size:24px;line-height:28px;width:50px;text-align:center;margin-right:8px}.brand-icon{width:46px;height:46px;border-radius:50%;background:#242f39;display:grid;place-items:center;flex-shrink:0}.brand-icon svg{height:25px;width:25px}.brand-icon[data-network*=facebook]{color:#39a4ff}.brand-icon[data-network*=instagram]{color:#fa4b95}.brand-icon[data-network*=youtube]{color:#ff3030}.brand-icon[data-network*=telegram]{color:#39b7f1}.brand-icon[data-network*=whatsapp]{color:#20d86e}.brand-icon[data-network*=linkedin]{color:#49a9e8}.brand-icon[data-network*=tiktok]{color:#fff;filter:drop-shadow(1px 1px 0 #ff2850) drop-shadow(-1px -1px 0 #25f4ee)}.browse-back{display:inline-block;color:#9aabbb;margin-bottom:22px;text-decoration:none;margin-right:18px}.card{background:#1d2730;border-color:#303c48;box-shadow:none;border-radius:16px}.checkout-intro h1{font-size:30px;color:#e1e7ed}.checkout-intro p,.step-description,.muted{color:#9aa8b5}.checkout-eyebrow{color:#8daeff}input:not([type=checkbox]),select{background:#151f28;color:#e1e7ed;border-color:#384653}input:focus,select:focus{background:#1b2936}.notice{background:#223247;border-color:#344d69;color:#d8e4f1}.notice small{color:#9cadbf}.checkout-total strong{color:#8cb8ff}.checkout-account{border-color:#34414d}.checkout-account a,a{color:#78adff}.checkout-terms{color:#c0cbd6}.error{background:#42252a;color:#ffd5d5;border-color:#7b424c}#payButton{background:#267def}.checkout-footnote{color:#9baab9}
+@media(max-width:800px){header{margin:0 18px}main{margin-left:0;padding:22px 18px 90px}.guest-sidebar{position:static;display:flex;overflow:auto;width:auto;gap:6px;margin-bottom:26px}.guest-sidebar a{white-space:nowrap;padding:9px 14px;font-size:13px}.browser-top{flex-wrap:wrap;margin-bottom:24px;gap:12px}.browser-top input[type=search]{max-width:none}.browser-top>span{font-size:12px}.network-row{gap:14px;min-height:76px}.network-row strong{font-size:15px}.grid{grid-template-columns:1fr}.brand-icon{width:42px;height:42px}.row-chevron{width:34px}.checkout-intro h1{font-size:27px}}
+</style>
+<style>.checkout-brand{background:#f6f8fc;border-radius:10px;padding:8px 12px}.brand-icon svg{width:28px;height:28px;border-radius:7px;padding:4px;color:white}.brand-icon[data-network*=facebook] svg{background:#168bfa}.brand-icon[data-network*=instagram] svg{background:radial-gradient(circle at 25% 110%,#ffe06b 0%,#ff523e 38%,#c521a1 68%,#6355da 100%)}.brand-icon[data-network*=youtube] svg{background:#ff170f}.brand-icon[data-network*=whatsapp] svg{background:#0acb63}.brand-icon[data-network*=telegram] svg{background:#20a8df}.brand-icon[data-network*=linkedin] svg{background:#087fba}.brand-icon[data-network*=tiktok]{filter:none}.brand-icon[data-network*=tiktok] svg{background:#090b0d;filter:drop-shadow(1px 0 0 #ff2850) drop-shadow(-1px 0 0 #25f4ee)}</style>
+@endpush

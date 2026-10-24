@@ -27,6 +27,37 @@ class RentalLandingEditorTest extends TestCase
         return app(RentalLandingController::class)->store(Request::create('/', 'POST', ['action' => $action, 'html' => $html, 'css' => 'body{color:blue}']), $panel->id);
     }
 
+    public function test_appearance_color_preserves_existing_settings(): void
+    {
+        $panel = $this->panel();
+        $panel->update(['workspace_settings' => ['landing_draft' => ['html' => 'Keep me'], 'fast_orders' => true]]);
+        app(RentalLandingController::class)->appearance(Request::create('/', 'POST', ['kind' => 'color', 'color' => '#22aaff']), $panel->id);
+        $this->assertSame('#22aaff', $panel->fresh()->color);
+        $this->assertSame('Keep me', $panel->fresh()->workspace()['landing_draft']['html']);
+        $this->assertTrue($panel->fresh()->workspace()['fast_orders']);
+    }
+
+    public function test_appearance_cannot_edit_another_tenant(): void
+    {
+        $panel = $this->panel(); $this->panel();
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        app(RentalLandingController::class)->appearance(Request::create('/', 'POST', ['kind' => 'color', 'color' => '#22aaff']), $panel->id);
+    }
+
+    public function test_appearance_requires_branding_permission(): void
+    {
+        $panel = $this->panel(); $panel->update(['features' => []]);
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        app(RentalLandingController::class)->appearance(Request::create('/', 'POST', ['kind' => 'color', 'color' => '#22aaff']), $panel->id);
+    }
+
+    public function test_appearance_rejects_invalid_color(): void
+    {
+        $panel = $this->panel();
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(RentalLandingController::class)->appearance(Request::create('/', 'POST', ['kind' => 'color', 'color' => 'javascript:invalid']), $panel->id);
+    }
+
     public function test_draft_publish_edit_and_restore_keep_independent_versions(): void
     {
         $panel = $this->panel();

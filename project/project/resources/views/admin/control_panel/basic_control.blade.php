@@ -205,6 +205,13 @@
                         <div class="card-body">
                             <ul class="list-group list-group-flush list-group-no-gutters">
                                 <li class="list-group-item">
+                                    <label class="d-flex justify-content-between align-items-center" for="activityPopupEnabled">
+                                        <span><strong>Homepage activity popup</strong><small class="d-block">Show genuine recent orders and Kenya/Africa service promotions. Turn off to hide all activity popups.</small></span>
+                                        <input type="hidden" name="activity_popup_enabled" value="0">
+                                        <input class="form-check-input" id="activityPopupEnabled" name="activity_popup_enabled" type="checkbox" value="1" @checked(old('activity_popup_enabled', $basicControl->activity_popup_enabled ?? true))>
+                                    </label>
+                                </li>
+                                <li class="list-group-item">
                                     <div class="d-flex">
                                         <div class="flex-grow-1">
                                             <div class="row align-items-center">

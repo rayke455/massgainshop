@@ -65,59 +65,7 @@
 <!--End of Facebook Messenger Script-->
 
 
-@if(basicControl()->cookie_status == 1 && auth()->guard('web'))
-    <script>
-        function setCookie(name, value, days) {
-            var expires = "";
-            if (days) {
-                var date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            document.cookie = name + "=" + value + expires + "; path=/";
-        }
-
-        function hasAcceptedCookiePolicy() {
-            return document.cookie.indexOf("cookie_policy_accepted=true") !== -1;
-        }
-
-        function hasClosedCookiePolicy() {
-            return document.cookie.indexOf("cookie_policy_rejected=true") !== -1;
-        }
-
-        function acceptCookiePolicy() {
-            setCookie("cookie_policy_accepted", "true", 365);
-            document.getElementById("cookiesAlert").style.display = "none";
-        }
-
-        function closeCookieBanner() {
-            setCookie("cookie_policy_rejected", "true", 365);
-            document.getElementById("cookiesAlert").style.display = "none";
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            if (!hasAcceptedCookiePolicy() && !hasClosedCookiePolicy()) {
-                document.getElementById("cookiesAlert").style.display = "block";
-            }
-        });
-    </script>
-
-    <div class="cookies-alert" id="cookiesAlert">
-        <img src="{{ asset('assets/global/img/cookie.svg') }}" height="50" width="50"
-             alt="{{ basicControl()->site_title }} cookies">
-        <h4 class="mt-2">@lang(basicControl()->cookie_title)</h4>
-        <span class="d-block mt-2">@lang(basicControl()->cookie_sub_title).
-            @unless(app()->bound('rental.panel'))
-            <a href="{{ basicControl()->cookie_url }}" class="link">@lang("see more")</a>
-            @endunless
-        </span>
-        <a href="javascript:void(0);" class="mt-3 cmn-btn justify-content-center cookie-accept-btn" type="button"
-           onclick="acceptCookiePolicy()">@lang('Accept')</a>
-        <a href="javascript:void(0);" class="mt-2 cmn-btn3 rounded-5 ms-2 cookie-close-btn" type="button"
-           onclick="closeCookieBanner()">@lang('Close')</a>
-
-    </div>
-@endif
+{{-- Cookie popup removed. Essential login, checkout and currency cookies are unchanged. --}}
 
 
 

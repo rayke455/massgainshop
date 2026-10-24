@@ -3,6 +3,7 @@
     - "Just ordered" cards come only from real orders (country from the buyer's profile, no names or links).
     - "Available in" cards promote real services country by country; they never claim a purchase happened.
 --}}
+@if(basicControl()->activity_popup_enabled ?? true)
 @php
     $zkCountries = [
         'us' => 'United States', 'gb' => 'United Kingdom', 'de' => 'Germany', 'br' => 'Brazil', 'ca' => 'Canada',
@@ -26,7 +27,8 @@
     try {
         // Real orders from the last 30 days.
         $zkReal = \App\Models\Order::with(['service:id,service_title', 'users:id,country_code,country'])
-            ->whereNotIn('status', ['canceled', 'refunded', 'fail'])
+            ->whereNull('rental_panel_id')
+            ->whereIn('status', ['processing', 'completed', 'partial'])
             ->where('created_at', '>=', now()->subDays(30))
             ->latest()->take(15)->get(['id', 'user_id', 'service_id', 'quantity', 'created_at']);
         foreach ($zkReal as $o) {
@@ -44,23 +46,30 @@
         $zkSvcs = \App\Models\Service::where('service_status', 1)
             ->orderByRaw('CAST(price AS DECIMAL(16,6)) asc')->take(12)->get(['id', 'service_title', 'price']);
         if ($zkSvcs->isNotEmpty()) {
-            $codes = array_keys($zkCountries);
-            shuffle($codes);
+            // Service prices are in the site's base currency; rates convert from that base.
+            // Use the promoted country's currency, not the visitor's currency cookie.
+            $zkRates = \App\Models\Currency::where('status', 1)->get(['code', 'conversion_rate'])->keyBy('code');
+            $zkBaseCurrency = strtoupper((string) basicControl()->base_currency);
+            $codes = ['ke', 'ke', 'tz', 'ug', 'ng', 'gh', 'za', 'rw', 'eg', 'ma', 'et'];
             foreach (array_slice($codes, 0, 40) as $i => $iso) {
+                $zkCode = config('country_currency.'.strtoupper($iso));
+                $zkRate = $zkCode === $zkBaseCurrency ? 1.0 : (float) ($zkRates->get($zkCode)->conversion_rate ?? 0);
+                // Do not advertise a misleading price when a local rate is unavailable.
+                if (!$zkCode || !is_finite($zkRate) || $zkRate <= 0) continue;
                 $s = $zkSvcs[$i % $zkSvcs->count()];
                 $zkFeed[] = [
                     'kind' => 'promo',
                     'flag' => $zkFlag($iso),
                     'place' => $zkCountries[$iso],
                     'text' => $zkClean($s->service_title),
-                    'price' => zkShowPrice($s->price) . ' / 1k',
+                    'price' => zkPerK((float) $s->price * $zkRate, $zkCode) . ' / 1k',
                 ];
             }
         }
     } catch (\Throwable $e) {
         $zkFeed = [];
     }
-    $zkBuy = auth()->check() ? route('user.order.create') : route('register');
+    $zkBuy = auth()->check() ? route('user.order.create') : route('guest.order');
     $zkRealFeed = array_values(array_filter($zkFeed, fn($f) => $f['kind'] === 'real'));
     $zkPromoFeed = array_values(array_filter($zkFeed, fn($f) => $f['kind'] === 'promo'));
 @endphp
@@ -85,7 +94,7 @@
             const real = @json($zkRealFeed);
             const promo = @json($zkPromoFeed);
             const t = {
-                real: @json(__('Just ordered in')),
+                real: @json(__('Recent order from')),
                 promo: @json(__('Now available in')),
                 from: @json(__('from')),
                 justNow: @json(__('Just ordered')),
@@ -134,4 +143,5 @@
             nextTimer = setTimeout(show, 5000);
         })();
     </script>
+@endif
 @endif

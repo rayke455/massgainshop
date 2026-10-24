@@ -7,7 +7,7 @@
 <aside class="notice tenant-preview-banner" role="note">Tenant-owner preview · sample data only · saving and payments disabled.
 <div class="inline"><a href="{{ route('rental.preview.alias') }}">Control panel</a><a href="{{ route('rental.preview.alias', ['screen'=>'content']) }}">Pages & FAQ</a><a href="{{ route('rental.preview.alias', ['screen'=>'promotions']) }}">Promotions</a><a href="{{ route('rental.preview.customer') }}">Customer preview</a></div></aside>
 @endif
-<header><strong>@yield('brand', 'Mass Panel Shop')</strong>
+<header><strong>@if(isset($panel) && $panel->allows('branding') && ($headerLogo = \App\Services\PanelRentals::logoUrl($panel, 'dark_logo')))<img src="{{ $headerLogo }}" alt="{{ $panel->name }}" style="max-width:180px;max-height:44px;object-fit:contain">@else @yield('brand', 'Mass Panel Shop') @endif</strong>
 @if(View::hasSection('owner-workspace') || View::hasSection('owner-panel'))
 @include('rentals.owner-top-navigation')
 @else

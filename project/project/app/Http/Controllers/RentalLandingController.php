@@ -47,4 +47,37 @@ class RentalLandingController extends Controller
             'publish' => 'Landing page published.', 'restore' => 'Default landing page restored. Your draft is retained.', default => 'Draft saved. Your published page is unchanged.',
         });
     }
+
+    public function appearance(Request $request, int $panelId)
+    {
+        $this->panel($panelId);
+        $data = $request->validate([
+            'kind' => 'required|in:logo,dark_logo,favicon,color',
+            'image' => 'required_unless:kind,color|nullable|image|mimes:png,jpg,jpeg,webp|max:2048|dimensions:max_width=4096,max_height=4096',
+            'color' => ['required_if:kind,color', 'nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+        DB::transaction(function () use ($request, $panelId, $data) {
+            $panel = RentalPanel::where('owner_id', auth()->id())->whereKey($panelId)->lockForUpdate()->firstOrFail();
+            abort_unless($panel->allows('branding'), 403);
+            if ($data['kind'] === 'color') {
+                $panel->color = $data['color'];
+            } else {
+                $directory = base_path('assets/upload/rentals');
+                if (!is_dir($directory)) mkdir($directory, 0755, true);
+                $upload = $request->file('image');
+                $filename = 'panel-'.$panel->id.'-'.\Illuminate\Support\Str::uuid().'.'.$upload->extension();
+                $upload->move($directory, $filename);
+                if ($data['kind'] === 'logo') {
+                    $panel->logo = $filename;
+                } else {
+                    $workspace = $panel->workspace();
+                    $workspace[$data['kind']] = $filename;
+                    $panel->workspace_settings = $workspace;
+                }
+            }
+            $panel->save();
+            PanelRentals::audit($panel->id, 'user:'.auth()->id(), 'appearance_updated', ['kind' => $data['kind']]);
+        });
+        return redirect()->route('user.panels.landing', $panelId)->with('success', 'Panel appearance updated.');
+    }
 }

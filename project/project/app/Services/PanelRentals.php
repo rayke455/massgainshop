@@ -117,8 +117,9 @@ class PanelRentals {
             })->values();
     }
 
-    public static function logoUrl(RentalPanel $panel): ?string {
-        return $panel->logo ? asset('assets/upload/rentals/' . $panel->logo) : null;
+    public static function logoUrl(RentalPanel $panel, string $variant = 'logo'): ?string {
+        $file = $variant === 'logo' ? $panel->logo : ($panel->workspace()[$variant] ?? $panel->logo);
+        return $file ? asset('assets/upload/rentals/' . basename($file)) : null;
     }
 
     // ------------------------------------------------------------------ checkout fulfilment

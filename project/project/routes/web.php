@@ -257,6 +257,7 @@ Route::get('rental-preview/admin', [\App\Http\Controllers\PanelRentalController:
     Route::post('support-session/stop', [\App\Http\Controllers\Admin\UsersController::class, 'stopSupportSession'])->middleware('auth:admin')->name('support-session.stop');
     Route::middleware(['auth', 'userCheck'])->prefix('user/panels')->name('user.panels.')->group(function () {
         Route::get('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'index'])->whereNumber('panelId')->name('landing');
+        Route::post('/{panelId}/appearance', [\App\Http\Controllers\RentalLandingController::class, 'appearance'])->whereNumber('panelId')->middleware('throttle:20,1')->name('appearance');
         Route::post('/{panelId}/landing', [\App\Http\Controllers\RentalLandingController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('landing.store');
         Route::get('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'index'])->whereNumber('panelId')->name('promotions');
         Route::post('/{panelId}/promotions', [\App\Http\Controllers\RentalPromotionController::class, 'store'])->whereNumber('panelId')->middleware('throttle:20,1')->name('promotions.store');

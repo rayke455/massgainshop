@@ -217,6 +217,7 @@ class BasicControlController extends Controller
     public function basicControlActivityUpdate(Request $request)
     {
         $request->validate([
+            'activity_popup_enabled' => 'required|boolean',
             'strong_password' => 'nullable|numeric|in:0,1',
             'registration' => 'nullable|numeric|in:0,1',
             'error_log' => 'nullable|numeric|in:0,1',
@@ -233,6 +234,7 @@ class BasicControlController extends Controller
                 'id' => $basic->id ?? ''
             ], [
                 'error_log' => $request->error_log,
+                'activity_popup_enabled' => $request->boolean('activity_popup_enabled'),
                 'strong_password' => $request->strong_password,
                 'registration' => $request->registration,
                 'is_active_cron_notification' => $request->is_active_cron_notification,

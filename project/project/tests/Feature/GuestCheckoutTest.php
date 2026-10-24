@@ -19,7 +19,31 @@ class GuestCheckoutTest extends TestCase {
             'base_amount'=>1,'amount_kes'=>100,'status'=>'awaiting_payment','payment_ref'=>'mock-'.Str::random(12)],$extra));
     }
     public function test_guest_form_opens_without_login():void {
-        $this->get('/order-without-account')->assertOk()->assertSee('Order without an account.')->assertSee('Kenya M-Pesa number');
+        $this->get('/order-without-account')->assertOk()->assertSee('Select network')->assertDontSee('id="guestOrder"',false);
+        $service = GuestCheckout::catalogue()->firstOrFail();
+        $network = $service->category->socialMedia->name;
+        $this->get(route('guest.order',['network'=>$network]))->assertOk()->assertSee($service->category->category_title);
+        $this->get(route('guest.order',['network'=>$network,'category'=>$service->category_id]))->assertOk()->assertSee('Select service');
+        $this->get(route('guest.order',['service'=>$service->id]))->assertOk()->assertSee('Order without an account.')->assertSee('Kenya M-Pesa number');
+    }
+    public function test_unknown_service_cannot_open_checkout():void {
+        $this->get('/order-without-account?service=2147483647')->assertNotFound();
+    }
+    public function test_activity_popup_can_be_disabled_by_setting():void {
+        $basic = \App\Models\BasicControl::firstOrFail();
+        try {
+            $basic->update(['activity_popup_enabled'=>false]);
+            $html = view('themes.light_green.partials.activity_popup')->render();
+            $this->assertStringNotContainsString('id="zkLive"', $html);
+            $this->assertFalse((bool)$basic->fresh()->activity_popup_enabled);
+            $basic->update(['activity_popup_enabled'=>true]);
+            $html = view('themes.light_green.partials.activity_popup')->render();
+            $this->assertStringContainsString('id="zkLive"', $html);
+            $this->assertStringContainsString('Kenya', $html);
+            $this->assertStringNotContainsString('Canada', $html);
+        } finally {
+            \Illuminate\Support\Facades\Cache::forget('ConfigureSetting');
+        }
     }
     public function test_tracking_does_not_expose_contact_details():void {
         $guest=$this->guest();

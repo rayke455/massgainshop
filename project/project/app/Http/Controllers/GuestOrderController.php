@@ -8,10 +8,13 @@ use Illuminate\Validation\ValidationException;
 class GuestOrderController extends Controller {
     public function index() {
         abort_if(PanelRentals::current(),404);
+        request()->validate(['network'=>'nullable|string|max:100','category'=>'nullable|integer|min:1','service'=>'nullable|integer|min:1']);
+        $services = GuestCheckout::catalogue();
+        if (request()->filled('service')) abort_unless($services->contains('id', (int)request('service')), 404);
         $key=session('guest_checkout_key');
         if (!$key || GuestOrder::where('checkout_key',$key)->exists()) $key=(string)Str::uuid();
         session(['guest_checkout_key'=>$key]);
-        return view('guest.checkout',['services'=>GuestCheckout::catalogue(),'rate'=>GuestCheckout::rate(),
+        return view('guest.checkout',['services'=>$services,'rate'=>GuestCheckout::rate(),
             'ready'=>app(MpesaService::class)->ready(),'checkoutKey'=>$key,'limits'=>GuestCheckout::paymentLimits()]);
     }
     public function store(Request $request) {
