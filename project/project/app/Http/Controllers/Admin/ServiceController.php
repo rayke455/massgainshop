@@ -681,20 +681,6 @@ class ServiceController extends Controller
         }
     }
 
-    public function destroy(string $id)
-    {
-        try {
-            $service = Service::findOrFail($id);
-            if ($service->orders()->exists()) {
-                return back()->with('error', 'Cannot delete this service because it has existing orders.');
-            }
-            $service->delete();
-            return back()->with('success', 'Service deleted successfully.');
-        } catch (\Exception $exception) {
-            return back()->with('error', $exception->getMessage());
-        }
-    }
-
     /** Platforms we recognise in provider names, in match order (more specific first). */
     public const PLATFORMS = [
         'Instagram' => ['instagram', 'insta ', 'ig '], 'TikTok' => ['tiktok', 'tik tok'], 'YouTube' => ['youtube', 'yt '],
