@@ -33,10 +33,25 @@
                     <strong class="notranslate">{{ $price(optional($category->service->first())->price) }}</strong>
                     <span>@lang('per 1,000')</span>
                     <a class="zk-btn zk-btn--primary zk-btn--lg w-100 mt-3" href="{{ $buyUrl(optional($category->service->first())->id) }}">@lang('Order now')</a>
+                    @guest
+                        <div class="mt-3 text-center">
+                            <span class="small text-muted">@lang('Have an account?')</span>
+                            <a href="{{ route('login') }}" class="small fw-semibold text-primary ms-1">
+                                <i class="fa-regular fa-arrow-right-to-bracket me-1"></i>@lang('Log in here')
+                            </a>
+                        </div>
+                    @endguest
                 </div>
             </div>
 
-            <h2 class="zk-land__h2">@lang('Choose your package')</h2>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h2 class="zk-land__h2 mb-0">@lang('Choose your package')</h2>
+                @guest
+                    <a href="{{ route('login') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        <i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang('Log in to account')
+                    </a>
+                @endguest
+            </div>
             <div class="zk-land__list">
                 @foreach($category->service as $s)
                     <div class="zk-land__item">

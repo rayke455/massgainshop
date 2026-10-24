@@ -21,6 +21,7 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="{{ route('register') }}" class="zk-btn zk-btn--primary">@lang('Create free account')</a>
+                    <a href="{{ route('login') }}" class="zk-btn zk-btn--ghost"><i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang('Log in')</a>
                     <a href="{{ route('services') }}" class="zk-btn zk-btn--ghost">@lang('View pricing')</a>
                 </div>
             </div>

@@ -123,6 +123,11 @@
                 @endauth
             </ul>
         </div>
+        @guest
+            <a class="zk-btn zk-btn--ghost zk-btn--sm d-inline-flex d-lg-none me-2 py-1 px-3" href="{{ route('login') }}" style="height:38px;font-size:14px;border-radius:8px;">
+                <i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang("Log in")
+            </a>
+        @endguest
         <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
                 aria-controls="offcanvasNavbar" aria-label="@lang('Open menu')">
             <i class="fa-light fa-bars"></i>

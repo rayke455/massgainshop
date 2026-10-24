@@ -32,7 +32,10 @@
                             <a href="{{ route('guest.order') }}" class="zk-btn zk-btn--primary zk-btn--pill zk-btn--glow">
                                 @lang('Order without account') <i class="fa-regular fa-arrow-right"></i>
                             </a>
-                            <a href="{{ route('register') }}" class="zk-btn zk-btn--outline zk-btn--pill">@lang('Create account')</a>
+                            <a href="{{ route('login') }}" class="zk-btn zk-btn--outline zk-btn--pill">
+                                <i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang('Log in')
+                            </a>
+                            <a href="{{ route('register') }}" class="zk-btn zk-btn--ghost zk-btn--pill">@lang('Create account')</a>
                         @else
                             <a href="{{ route('user.order.create') }}" class="zk-btn zk-btn--primary zk-btn--pill zk-btn--glow">
                                 @lang('Buy services') <i class="fa-regular fa-arrow-right"></i>

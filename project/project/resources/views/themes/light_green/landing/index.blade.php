@@ -35,6 +35,27 @@
                         <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 rounded-pill"><i class="fa-solid fa-headset me-1"></i> @lang('24/7 WhatsApp & Ticket Support')</span>
                     </div>
                 @endif
+
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    @guest
+                        <a href="{{ route('guest.order') }}" class="zk-btn zk-btn--primary zk-btn--sm zk-btn--pill zk-btn--glow">
+                            <i class="fa-regular fa-cart-shopping me-1"></i> @lang('Order without account')
+                        </a>
+                        <a href="{{ route('login') }}" class="zk-btn zk-btn--outline zk-btn--sm zk-btn--pill">
+                            <i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang('Log in')
+                        </a>
+                        <a href="{{ route('register') }}" class="zk-btn zk-btn--ghost zk-btn--sm zk-btn--pill">
+                            @lang('Create account')
+                        </a>
+                    @else
+                        <a href="{{ route('user.order.create') }}" class="zk-btn zk-btn--primary zk-btn--sm zk-btn--pill zk-btn--glow">
+                            <i class="fa-regular fa-plus me-1"></i> @lang('Buy services')
+                        </a>
+                        <a href="{{ route('user.dashboard') }}" class="zk-btn zk-btn--outline zk-btn--sm zk-btn--pill">
+                            <i class="fa-regular fa-gauge me-1"></i> @lang('Dashboard')
+                        </a>
+                    @endguest
+                </div>
             </div>
 
             <!-- Regional Market Switcher Pills for Instant Crawling & High SERP Visibility -->
