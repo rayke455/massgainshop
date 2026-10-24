@@ -66,7 +66,7 @@ class HomeController extends Controller
 
             $deposits = Deposit::query()
                 ->where('user_id', $this->user->id)
-                ->where('status', '!=', 0)
+                ->where('status', 1)
                 ->whereNull('depositable_type')
                 ->whereBetween('created_at', [$startOfYear, $endOfYear])
                 ->latest()
@@ -107,7 +107,8 @@ class HomeController extends Controller
                 ->whereYear('created_at', $currentYear)
                 ->orderBy('month', 'asc')
                 ->get();
-            $data['transactions'] = $transactions->take(5);
+            $data['transactions'] = Transaction::where('user_id', $this->user->id)
+                ->latest('created_at')->latest('id')->limit(5)->get();
             for ($month = 1; $month <= 12; $month++) {
                 $transactionsOfMonth = $transactions->where('month', $month);
                 $totalTransaction = $transactionsOfMonth->sum('amount');
@@ -148,10 +149,10 @@ class HomeController extends Controller
             // dashboard remains unchanged for platform customers and administrators.
             if (app()->bound('rental.panel') && (int) $this->user->rental_panel_id === (int) app('rental.panel')->id) {
                 $data['panel'] = app('rental.panel');
-                return view('rentals.customer-workspace', $data, compact('transactions', 'currency'));
+                return view('rentals.customer-workspace', $data, compact('currency'));
             }
 
-            return view(template() . 'user.dashboard', $data, compact('transactions', 'currency'));
+            return view(template() . 'user.dashboard', $data, compact('currency'));
         } catch (\Exception $exception) {
             report($exception);
             return response()->view('errors.dashboard-unavailable', [], 503);

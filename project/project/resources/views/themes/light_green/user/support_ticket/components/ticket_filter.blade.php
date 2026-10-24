@@ -24,10 +24,10 @@
                     <label class="form-label">@lang("Status")</label>
                     <select class="modal-select" name="status">
                         <option value="">@lang("All Status")</option>
-                        <option value="0" {{ request()->status == 0 ? 'Open' : '' }}>@lang("Open")</option>
-                        <option value="1" {{ request()->status == 1 ? 'Answered' : '' }}>@lang("Answered")</option>
-                        <option value="2" {{ request()->status == 2 ? 'Replied' : '' }}>@lang("Replied")</option>
-                        <option value="3" {{ request()->status == 3 ? 'Closed' : '' }}>@lang("Closed")</option>
+                        <option value="0" @selected((string) request('status') === '0')>@lang("Open")</option>
+                        <option value="1" @selected((string) request('status') === '1')>@lang("Answered")</option>
+                        <option value="2" @selected((string) request('status') === '2')>@lang("Replied")</option>
+                        <option value="3" @selected((string) request('status') === '3')>@lang("Closed")</option>
                     </select>
                 </div>
                 <div>

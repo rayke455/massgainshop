@@ -206,7 +206,10 @@ a { transition: color .2s var(--zk-ease); }
     box-shadow: 0 6px 20px -14px rgba(15, 23, 42, .25);
 }
 
-.zk-nav .logo img { height: 40px; width: auto; max-width: 260px; }
+.zk-nav .navbar-brand { width: 180px; flex: 0 0 180px; margin-right: 20px; }
+.zk-nav .logo img { display: block; height: auto; width: 100%; max-width: 180px; max-height: 44px; object-fit: contain; }
+.zk-nav > .container { gap: 12px; }
+.zk-nav .nav-right { flex-shrink: 0; }
 
 .zk-nav .navbar-nav .nav-link {
     color: var(--zk-ink);
@@ -262,7 +265,7 @@ a { transition: color .2s var(--zk-ease); }
 .zk-rental-invite small { display:block; font-size:12px; line-height:1.6; color:#637087; }
 .zk-rental-invite:hover { border-color:#2454dc; color:#2454dc; }
 
-@media (max-width: 991px) {
+@media (max-width: 1399.98px) {
     /* A backdrop filter makes fixed descendants relative to the header. */
     .zk-nav.navbar {
         backdrop-filter: none;
@@ -274,7 +277,7 @@ a { transition: color .2s var(--zk-ease); }
     .zk-nav .nav-right .zk-hide-sm { display: none; }
     .zk-nav > .container { flex-wrap: nowrap; gap: 8px; }
     .zk-nav > .container > .navbar-brand { flex: 1 1 0; min-width: 0; margin-right: 0; }
-    .zk-nav .logo img { display: block; width: auto; max-width: 100%; height: auto; max-height: 40px; object-fit: contain; }
+    .zk-nav .logo img { display: block; width: auto; max-width: min(180px, 100%); height: auto; max-height: 40px; object-fit: contain; }
     .zk-nav .nav-right, .zk-nav .navbar-toggler { flex: 0 0 auto; }
     .zk-nav .nav-right { margin-right: 0; }
     .zk-nav .offcanvas-header .navbar-brand { min-width: 0; flex: 1; }

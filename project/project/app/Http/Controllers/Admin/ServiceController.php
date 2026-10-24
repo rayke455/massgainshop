@@ -83,8 +83,9 @@ class ServiceController extends Controller
         try {
 
             $refillData = $this->handleRefill($data['refill']);
+            $providerAttributes = $this->validatedProviderAttributes($data);
 
-            $serviceRes = Service::create([
+            $serviceRes = Service::create(array_replace([
                 'service_title' => $data['name'],
                 'category_id' => $data['category'],
                 'min_amount' => $data['min_amount'],
@@ -94,8 +95,8 @@ class ServiceController extends Controller
                 'service_type' => 'Default',
                 'drip_feed' => $data['drip_feed'] ?? 0,
                 'manual_api' => $data['manual_api'],
-                'api_provider_id' => isset($request->api_provider_id) ? $request->api_provider_id : null,
-                'api_service_id' => isset($request->api_service_id) ? $request->api_service_id : null,
+                'api_provider_id' => $data['manual_api'] == 1 ? $data['api_provider_id'] : null,
+                'api_service_id' => $data['manual_api'] == 1 ? $data['api_service_id'] : null,
                 'refill' => $refillData['refill'] ?? 0,
                 'is_refill_automatic' => $refillData['is_refill_automatic'] ?? 0,
                 'description' => $data['description'] ?? null,
@@ -104,11 +105,9 @@ class ServiceController extends Controller
                   // Backup provider only applies to provider services.
                   'backup_api_provider_id' => ($data['manual_api'] ?? 0) == 1 ? ($data['backup_api_provider_id'] ?? null) : null,
                   'backup_api_service_id' => ($data['manual_api'] ?? 0) == 1 && !empty($data['backup_api_provider_id']) ? ($data['backup_api_service_id'] ?? null) : null,
-              ]);
+              ], $providerAttributes));
 
             throw_if(!$serviceRes, 'Something went wrong, while storing data.Please try again.');
-
-            $this->handleApiServiceCreation($data, $serviceRes);
 
             return back()->with('success', ($data['manual_api'] ?? 0) == 1 ? 'API service created successfully.' : 'Service created successfully.');
 
@@ -140,11 +139,12 @@ class ServiceController extends Controller
         $data = $request->validated();
         try {
             $refillData = $this->handleRefill($data['refill']);
+            $providerAttributes = $this->validatedProviderAttributes($data);
             $service = Service::where('id', $id)->firstOr(function () {
                 throw new \Exception('Service is not available.');
             });
 
-            $serviceRes = $service->update([
+            $serviceRes = $service->update(array_replace([
                 'service_title' => $data['name'],
                 'category_id' => $data['category'],
                 'min_amount' => $data['min_amount'],
@@ -153,8 +153,8 @@ class ServiceController extends Controller
                 'service_status' => $data['status'] ?? 0, // unchecked toggles aren't submitted
                 'drip_feed' => $data['drip_feed'] ?? 0,
                 'manual_api' => $data['manual_api'],
-                'api_provider_id' => isset($request->api_provider_id) ? $request->api_provider_id : null,
-                'api_service_id' => isset($request->api_service_id) ? $request->api_service_id : null,
+                'api_provider_id' => $data['manual_api'] == 1 ? $data['api_provider_id'] : null,
+                'api_service_id' => $data['manual_api'] == 1 ? $data['api_service_id'] : null,
                 'refill' => $refillData['refill'] ?? 0,
                 'is_refill_automatic' => $refillData['is_refill_automatic'] ?? 0,
                 'description' => $data['description'] ?? null,
@@ -163,11 +163,9 @@ class ServiceController extends Controller
                   // Backup provider only applies to provider services.
                   'backup_api_provider_id' => ($data['manual_api'] ?? 0) == 1 ? ($data['backup_api_provider_id'] ?? null) : null,
                   'backup_api_service_id' => ($data['manual_api'] ?? 0) == 1 && !empty($data['backup_api_provider_id']) ? ($data['backup_api_service_id'] ?? null) : null,
-              ]);
+              ], $providerAttributes));
 
             throw_if(!$serviceRes, 'Something went wrong, while updating data.Please try again.');
-
-            $this->handleApiServiceCreation($data, $service);
 
             return back()->with('success', 'Service updated successfully.');
 
@@ -197,27 +195,32 @@ class ServiceController extends Controller
         return $result;
     }
 
-    public function handleApiServiceCreation($data, $serviceRes)
+    protected function validatedProviderAttributes(array $data): array
     {
-        $provider = ApiProvider::find($data['api_provider_id'] ?? null);
-
         if ($data['manual_api'] == 1) {
+            $provider = ApiProvider::where('status', 1)->find($data['api_provider_id'] ?? null);
+            if (!$provider) {
+                throw new \RuntimeException('Select an active API provider.');
+            }
             $apiServiceData = app(\App\Services\ProviderApi::class)->services($provider);
 
             foreach ($apiServiceData as $current) {
                 if ($current['service'] == $data['api_service_id']) {
-                    $serviceRes->update([
+                    if (!is_numeric($current['rate'] ?? null) || (float) $current['rate'] < 0
+                        || !is_numeric($provider->conversion_rate) || (float) $provider->conversion_rate <= 0) {
+                        throw new \RuntimeException('The provider price or currency conversion rate is invalid.');
+                    }
+                    return [
                         'original_price' => $current['rate'] * $provider->conversion_rate,
                         'api_provider_price' => $current['rate'],
-                        'service_type' => $current['type'] ?? null,
-                    ]);
-                    return back()->with('success', 'API service successfully created.');
+                        'service_type' => $current['type'] ?? 'Default',
+                    ];
                 }
             }
-            return back()->with('error', 'Please check again API Service ID')->withInput();
+            throw new \RuntimeException('The API service ID was not found at this provider. No changes were saved.');
         }
 
-        return true;
+        return ['original_price' => $data['cost'] ?? null, 'api_provider_price' => null, 'service_type' => 'Default'];
     }
 
 
@@ -661,8 +664,9 @@ class ServiceController extends Controller
             session()->flash('error', "You didn't select any services.");
             return response()->json(['error' => 1]);
         } else {
-            Service::whereIn('id', $request->strIds)->delete();
-            session()->flash('success', 'Services have been deleted successfully.');
+            $request->validate(['strIds' => 'required|array|min:1', 'strIds.*' => 'integer|exists:services,id']);
+            $deleted = Service::whereIn('id', $request->strIds)->whereDoesntHave('orders')->delete();
+            session()->flash('success', "$deleted services deleted. Services with existing orders were kept.");
             return response()->json(['success' => 1]);
         }
     }
@@ -670,10 +674,24 @@ class ServiceController extends Controller
     public function deleteAll(Request $request)
     {
         try {
-            Service::query()->delete();
-            return back()->with('success', 'All services have been deleted successfully.');
+            $deleted = Service::whereDoesntHave('orders')->delete();
+            return back()->with('success', "$deleted services deleted. Services with existing orders were kept.");
         } catch (\Exception $exp) {
             return back()->with('error', 'Something went wrong while deleting services.');
+        }
+    }
+
+    public function destroy(string $id)
+    {
+        try {
+            $service = Service::findOrFail($id);
+            if ($service->orders()->exists()) {
+                return back()->with('error', 'Cannot delete this service because it has existing orders.');
+            }
+            $service->delete();
+            return back()->with('success', 'Service deleted successfully.');
+        } catch (\Exception $exception) {
+            return back()->with('error', $exception->getMessage());
         }
     }
 
@@ -763,52 +781,5 @@ class ServiceController extends Controller
         return $platforms['other'] ?? $platforms['others'];
     }
 
-    /**
-     * Delete a single service.
-     */
-    public function destroy(string $id)
-    {
-        try {
-            $service = Service::findOrFail($id);
-            $service->delete();
-
-            return back()->with('success', 'Service deleted successfully.');
-        } catch (\Exception $exception) {
-            return back()->with('error', $exception->getMessage());
-        }
-    }
-
-    /**
-     * Delete multiple selected services via AJAX.
-     */
-    public function deleteMultiple(Request $request)
-    {
-        if (empty($request->strIds)) {
-            session()->flash('error', 'You did not select any service.');
-            return response()->json(['error' => 1]);
-        }
-
-        try {
-            Service::whereIn('id', (array) $request->strIds)->delete();
-            session()->flash('success', 'Selected services have been deleted successfully.');
-            return response()->json(['success' => 1]);
-        } catch (\Exception $exception) {
-            session()->flash('error', $exception->getMessage());
-            return response()->json(['error' => 1]);
-        }
-    }
-
-    /**
-     * Delete all services.
-     */
-    public function deleteAll()
-    {
-        try {
-            Service::query()->delete();
-            return back()->with('success', 'All services have been deleted successfully.');
-        } catch (\Exception $exception) {
-            return back()->with('error', $exception->getMessage());
-        }
-    }
 }
 

@@ -37,7 +37,7 @@ class SupportTicketController extends Controller
             ->when(!empty($search['subject']), function ($query) use ($search) {
                 $query->where('subject', 'like', '%' . $search['subject'] . '%');
             })
-            ->when(!empty($search['status']), function ($query) use ($search) {
+            ->when($request->filled('status'), function ($query) use ($search) {
                 $query->where('status', $search['status']);
             })
             ->when(isset($search['from_date']) && isset($search['to_date']), function ($query) use ($search) {
@@ -50,7 +50,7 @@ class SupportTicketController extends Controller
                 return $query->whereDate('created_at', $search['to_date']);
             })
             ->orderBy('id', 'desc')
-            ->paginate(15);
+            ->paginate(15)->withQueryString();
         return view(template() . 'user.support_ticket.index', compact('tickets'));
     }
 

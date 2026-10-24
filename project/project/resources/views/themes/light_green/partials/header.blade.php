@@ -3,7 +3,7 @@
     $currencyCookie = json_decode($currencyRes);
     $zkPanel = \App\Services\PanelRentals::current();   // a rented panel's own domain
 @endphp
-<nav class="navbar fixed-top navbar-expand-lg zk-nav">
+<nav class="navbar fixed-top navbar-expand-xxl zk-nav">
     <div class="container">
         <a class="navbar-brand logo notranslate" href="{{ url('/') }}">
             <img src="{{ getFile(basicControl()->logo_driver,basicControl()->logo) }}"
@@ -29,7 +29,7 @@
                 @else
                     {!! renderHeaderMenu(getHeaderMenuData()) !!}
                 @endif
-                <div class="d-flex d-lg-none flex-wrap gap-2 mt-4 zk-mobile-prefs">
+                <div class="d-flex d-xxl-none flex-wrap gap-2 mt-4 zk-mobile-prefs">
                     @include(template().'partials.lang_picker', ['zkLangClass' => 'zk-currency', 'zkLangChevron' => true])
                     @if(count($currencies) > 1)
                         <label class="zk-currency" title="@lang('Currency')">
@@ -45,8 +45,10 @@
                     @endif
                 </div>
                 @guest
-                    <div class="d-flex d-lg-none flex-column gap-2 mt-4">
-                        <a class="zk-btn zk-btn--ghost" href="{{ route('login') }}">@lang("Log in")</a>
+                    <div class="d-flex d-xxl-none flex-column gap-2 mt-4">
+                        @unless(request()->is('/'))
+                            <a class="zk-btn zk-btn--ghost" href="{{ route('login') }}">@lang("Log in")</a>
+                        @endunless
                         <a class="zk-btn zk-btn--primary" href="{{ route('register') }}">@lang("Get started")</a>
                     </div>
                 @endguest
@@ -76,10 +78,12 @@
                 </li>
                 @endif
                 @guest
-                    <li class="nav-item d-none d-lg-block">
+                    @unless(request()->is('/'))
+                    <li class="nav-item d-none d-xxl-block">
                         <a class="zk-btn zk-btn--ghost zk-btn--sm" href="{{ route('login') }}">@lang("Log in")</a>
                     </li>
-                    <li class="nav-item d-none d-lg-block">
+                    @endunless
+                    <li class="nav-item d-none d-xxl-block">
                         <a class="zk-btn zk-btn--primary zk-btn--sm" href="{{ route('register') }}">@lang("Get started")</a>
                     </li>
                 @endguest
@@ -88,7 +92,7 @@
                         $zkMe = auth()->user();
                         $zkInitial = strtoupper(mb_substr($zkMe->username ?: ($zkMe->firstname ?: 'U'), 0, 1));
                     @endphp
-                    <li class="nav-item d-none d-lg-block">
+                    <li class="nav-item d-none d-xxl-block">
                         <a class="zk-btn zk-btn--primary zk-btn--sm" href="{{ route('user.dashboard') }}"><i class="fa-regular fa-gauge"></i> @lang('Dashboard')</a>
                     </li>
                     <li class="nav-item dropdown">
@@ -124,9 +128,11 @@
             </ul>
         </div>
         @guest
-            <a class="zk-btn zk-btn--ghost zk-btn--sm d-inline-flex d-lg-none me-2 py-1 px-3" href="{{ route('login') }}" style="height:38px;font-size:14px;border-radius:8px;">
+            @unless(request()->is('/'))
+            <a class="zk-btn zk-btn--ghost zk-btn--sm d-inline-flex d-xxl-none me-2 py-1 px-3" href="{{ route('login') }}" style="height:38px;font-size:14px;border-radius:8px;">
                 <i class="fa-regular fa-arrow-right-to-bracket me-1"></i> @lang("Log in")
             </a>
+            @endunless
         @endguest
         <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
                 aria-controls="offcanvasNavbar" aria-label="@lang('Open menu')">
