@@ -89,8 +89,8 @@ class PaymentMethodController extends Controller
                 if ($k != $key) {
                     continue;
                 } else {
-                    // Callback URLs and M-Pesa's Till number are optional; everything else is a required credential.
-                    $rules[$key] = in_array($key, ['webhook', 'till_number', 'webhook_secret'], true) ? 'nullable|max:5000' : 'required|max:5000';
+                    // Optional parameters (callbacks, optional secrets, defaults)
+                    $rules[$key] = in_array($key, ['webhook', 'till_number', 'webhook_secret', 'country_code', 'pass_digital_charge'], true) ? 'nullable|max:5000' : 'required|max:5000';
                     $parameters[$key] = $v ?? '';
                 }
             }

@@ -187,6 +187,14 @@
                                                                 'environment' => __('Set to "live" for real payments, or "sandbox" for test mode.'),
                                                             ][$key] ?? '' }}</small>
                                                         @endif
+                                                        @if($method->code === 'swychr')
+                                                            <small class="text-muted">{{ [
+                                                                'api_key' => __('From Swychr Dashboard (app.swychrconnect.com → API Keys).'),
+                                                                'webhook_secret' => __('Webhook secret/hash for X-Webhook-Signature-V2 verification (from Swychr webhook settings).'),
+                                                                'country_code' => __('Default 2-letter ISO country code (e.g. KE, CM, NG, GH). Automatically mapped from currency if left blank.'),
+                                                                'pass_digital_charge' => __('Enter 1 to pass the payment fee to the customer, or 0 to absorb it.'),
+                                                            ][$key] ?? '' }}</small>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach

@@ -39,7 +39,7 @@ return new class extends Migration
                     ],
                 ], JSON_FORCE_OBJECT),
                 'supported_currency' => json_encode(['USD', 'EUR', 'AED', 'GBP']),
-                'receivable_currencies' => [
+                'receivable_currencies' => json_encode([
                     [
                         'name' => 'USD',
                         'currency_symbol' => '$',
@@ -49,7 +49,7 @@ return new class extends Migration
                         'percentage_charge' => '0',
                         'fixed_charge' => '0',
                     ],
-                ],
+                ]),
             ]);
         }
     }
