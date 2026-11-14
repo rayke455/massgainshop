@@ -106,6 +106,16 @@ class DepositController extends Controller
             $min_limit = getAmount($currencyInfo->min_limit, $limit);
             $max_limit = getAmount($currencyInfo->max_limit, $limit);
             $charge = getAmount($percentage_charge + $fixed_charge, $limit);
+
+            // Automatic minimum limit calculation from USD base if unset or zero
+            if ($min_limit <= 0 && is_array($receivableCurrencies)) {
+                $usdInfo = collect($receivableCurrencies)->first(function ($c) {
+                    return strtoupper($c->name ?? '') === 'USD';
+                });
+                $baseMin = $usdInfo && (float) $usdInfo->min_limit > 0 ? (float) $usdInfo->min_limit : 1.0;
+                $convRate = (float) ($currencyInfo->conversion_rate ?? 1);
+                $min_limit = getAmount($baseMin * ($convRate > 0 ? $convRate : 1), $limit);
+            }
         }
 
         $basicControl = basicControl();

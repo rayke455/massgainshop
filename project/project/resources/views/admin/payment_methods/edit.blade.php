@@ -338,6 +338,42 @@
                                             </button>
                                         </div>
                                     </div>
+                                    <div class="card-body bg-light border-bottom py-3">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                                <span class="badge bg-primary text-white p-2">
+                                                    <i class="fa-solid fa-calculator me-1"></i> @lang('Auto-Calculate Limits')
+                                                </span>
+                                                <div class="d-inline-flex align-items-center gap-1">
+                                                    <label for="baseMinDeposit" class="form-label mb-0 small fw-bold">@lang('Base Min Deposit') ({{ $basicControl->base_currency ?: 'USD' }}):</label>
+                                                    <div class="input-group input-group-sm" style="width: 130px;">
+                                                        <span class="input-group-text">$</span>
+                                                        <input type="number" step="0.01" min="0.01" id="baseMinDeposit" name="base_min_deposit" class="form-control fw-bold text-primary" value="{{ old('base_min_deposit', '1.00') }}" placeholder="1.00">
+                                                    </div>
+                                                </div>
+                                                <div class="d-inline-flex align-items-center gap-1 ms-sm-2">
+                                                    <label for="baseMaxDeposit" class="form-label mb-0 small fw-bold">@lang('Base Max Deposit'):</label>
+                                                    <div class="input-group input-group-sm" style="width: 140px;">
+                                                        <span class="input-group-text">$</span>
+                                                        <input type="number" step="1" min="1" id="baseMaxDeposit" name="base_max_deposit" class="form-control" value="{{ old('base_max_deposit', '5000') }}" placeholder="5000">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" id="autoSyncRatesSwitch" name="auto_sync_limits" value="1" checked>
+                                                    <label class="form-check-label small fw-semibold text-secondary" for="autoSyncRatesSwitch">@lang('Auto-calculate when rate changes')</label>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-primary" id="btnApplyAllLimits">
+                                                    <i class="fa-solid fa-arrows-rotate me-1"></i> @lang('Apply to all currencies')
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fa-solid fa-circle-info text-info me-1"></i>
+                                            @lang('If base min is $1.00 and KES conversion rate is 130, KES min limit is automatically 130. If NGN is 1600, min limit is 1,600.')
+                                        </small>
+                                    </div>
                                     <div class="table-responsive position-relative">
                                         <table
                                             class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table"
@@ -614,6 +650,45 @@
                     })
                 })
             }
+
+            function calculateLimitsForRow(row) {
+                let baseMin = parseFloat($('#baseMinDeposit').val()) || 1.0;
+                let baseMax = parseFloat($('#baseMaxDeposit').val()) || 5000.0;
+                let rateInput = $(row).find('input[name*="[conversion_rate]"]');
+                let minInput = $(row).find('input[name*="[min_limit]"]');
+                let maxInput = $(row).find('input[name*="[max_limit]"]');
+
+                let rate = parseFloat(rateInput.val());
+                if (!isNaN(rate) && rate > 0) {
+                    let calcMin = (rate >= 10) ? Math.round(baseMin * rate) : Math.round(baseMin * rate * 100) / 100;
+                    let calcMax = (rate >= 10) ? Math.round(baseMax * rate) : Math.round(baseMax * rate * 100) / 100;
+                    minInput.val(calcMin);
+                    maxInput.val(calcMax);
+                }
+            }
+
+            function applyAllLimits() {
+                $('#supported_currency_table tbody tr').each(function () {
+                    calculateLimitsForRow(this);
+                });
+            }
+
+            $('#btnApplyAllLimits').on('click', function () {
+                applyAllLimits();
+            });
+
+            $('#baseMinDeposit, #baseMaxDeposit').on('input change', function () {
+                if ($('#autoSyncRatesSwitch').is(':checked')) {
+                    applyAllLimits();
+                }
+            });
+
+            $(document).on('input change', 'input[name*="[conversion_rate]"]', function () {
+                if ($('#autoSyncRatesSwitch').is(':checked')) {
+                    let row = $(this).closest('tr');
+                    calculateLimitsForRow(row);
+                }
+            });
 
             new HSFileAttach('.js-file-attach')
             HSCore.components.HSClipboard.init('.js-clipboard')

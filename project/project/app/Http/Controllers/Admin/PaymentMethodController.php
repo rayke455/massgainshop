@@ -125,11 +125,38 @@ class PaymentMethodController extends Controller
         }
 
         try {
-            $collection = collect($request->receivable_currencies);
+            $receivableCurrencies = $request->receivable_currencies;
+            $autoSync = $request->has('auto_sync_limits') ? $request->boolean('auto_sync_limits') : true;
+
+            if (is_array($receivableCurrencies) && $autoSync) {
+                $usdRow = collect($receivableCurrencies)->first(function ($c) {
+                    return strtoupper($c['name'] ?? '') === 'USD';
+                });
+                $baseMin = $usdRow && isset($usdRow['min_limit']) && (float) $usdRow['min_limit'] > 0
+                    ? (float) $usdRow['min_limit']
+                    : (float) ($request->input('base_min_deposit') ?: 1.0);
+                $baseMax = $usdRow && isset($usdRow['max_limit']) && (float) $usdRow['max_limit'] > 0
+                    ? (float) $usdRow['max_limit']
+                    : (float) ($request->input('base_max_deposit') ?: 5000.0);
+
+                foreach ($receivableCurrencies as $idx => $curr) {
+                    $rate = (float) ($curr['conversion_rate'] ?? 1);
+                    if ($rate > 0 && strtoupper($curr['name'] ?? '') !== 'USD') {
+                        $calcMin = $rate >= 10 ? round($baseMin * $rate) : round($baseMin * $rate, 2);
+                        $calcMax = $rate >= 10 ? round($baseMax * $rate) : round($baseMax * $rate, 2);
+                        if (!isset($curr['min_limit']) || empty($curr['min_limit']) || $request->boolean('auto_sync_limits')) {
+                            $receivableCurrencies[$idx]['min_limit'] = (string) $calcMin;
+                            $receivableCurrencies[$idx]['max_limit'] = (string) $calcMax;
+                        }
+                    }
+                }
+            }
+
+            $collection = collect($receivableCurrencies);
             $supportedCurrency = $collection->pluck('name')->all();
             $response = $gateway->update([
                 'supported_currency' => $supportedCurrency,
-                'receivable_currencies' => $request->receivable_currencies,
+                'receivable_currencies' => $receivableCurrencies,
                 'description' => $request->description,
                 'parameters' => $parameters,
                 'image' => $gatewayImage ?? $gateway->image,
