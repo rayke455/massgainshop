@@ -6,6 +6,7 @@
     @php
         $zkUser = auth()->user();
         $countries = \App\Http\Controllers\SwychrController::$countries;
+        $gw = $deposit->gateway;
 
         // Auto-detect default country: currency chosen by customer takes priority!
         $currMap = [
@@ -31,7 +32,28 @@
         }
 
         $selectedCountry = old('country_code', $defaultCountry);
-        $selectedCountryInfo = $countries[$selectedCountry] ?? $countries['KE'];
+
+        // Precompute charge amounts and formatted labels for each country
+        $countryData = [];
+        foreach ($countries as $cCode => $cInfo) {
+            $charge = \App\Http\Controllers\SwychrController::calculateChargeAmount($deposit, $cCode, $gw);
+            $isZeroDecimal = in_array($charge['currency'], \App\Http\Controllers\SwychrController::$zeroDecimalCurrencies);
+            $formattedAmount = ($isZeroDecimal ? number_format($charge['amount'], 0) : number_format($charge['amount'], 2)) . ' ' . $charge['currency'];
+            $countryData[$cCode] = [
+                'dial'      => $cInfo['dial'],
+                'example'   => $cInfo['example'],
+                'channels'  => $cInfo['channels'],
+                'flag'      => $cInfo['flag'],
+                'name'      => $cInfo['name'],
+                'currency'  => $charge['currency'],
+                'symbol'    => $charge['symbol'],
+                'rate'      => $charge['rate'],
+                'amount'    => $charge['amount'],
+                'formatted' => $formattedAmount,
+            ];
+        }
+
+        $selectedCountryInfo = $countryData[$selectedCountry] ?? ($countryData['KE'] ?? reset($countryData));
 
         // Pre-fill phone ONLY if user's saved country/dial code matches this country
         $rawPhone = preg_replace('/\D+/', '', (string) ($zkUser?->phone ?? ''));
@@ -58,7 +80,7 @@
                                  src="{{ getFile(optional($deposit->gateway)->driver, optional($deposit->gateway)->image) }}"
                                  alt="{{ optional($deposit->gateway)->name ?? 'Swychr Pay' }}">
                             <p class="zk-mpesa__label">@lang('Amount to pay')</p>
-                            <h1 class="zk-mpesa__amount">{{ number_format(round($deposit->payable_amount, 2), 2) }} {{ $deposit->payment_method_currency }}</h1>
+                            <h1 class="zk-mpesa__amount" id="displayPayAmount">{{ $selectedCountryInfo['formatted'] }}</h1>
                             <p class="zk-mpesa__credit">@lang('Adds') <strong><span class="notranslate">{{ currencyPosition($deposit->payable_amount_in_base_currency) }}</span></strong> @lang('to your balance')</p>
 
                             @if(session('error'))
@@ -75,13 +97,16 @@
                                         <i class="fa-regular fa-earth-africa me-1 text-primary"></i> @lang('Choose your country')
                                     </label>
                                     <select name="country_code" id="countryCode" class="form-select @error('country_code') is-invalid @enderror" required>
-                                        @foreach($countries as $code => $country)
+                                        @foreach($countryData as $code => $country)
                                             <option value="{{ $code }}"
                                                     data-dial="{{ $country['dial'] }}"
                                                     data-example="{{ $country['example'] }}"
                                                     data-channels="{{ $country['channels'] }}"
+                                                    data-formatted="{{ $country['formatted'] }}"
+                                                    data-currency="{{ $country['currency'] }}"
+                                                    data-amount="{{ $country['amount'] }}"
                                                     {{ $selectedCountry === $code ? 'selected' : '' }}>
-                                                {{ $country['flag'] }} {{ $country['name'] }} (+{{ $country['dial'] }})
+                                                {{ $country['flag'] }} {{ $country['name'] }} (+{{ $country['dial'] }}) — {{ $country['formatted'] }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -148,7 +173,7 @@
         .zk-mpesa__label { margin: 0; color: var(--zk-muted); font-size: 14px; font-weight: 600; }
         .zk-mpesa__amount { font-size: 32px; font-weight: 800; margin: 4px 0; text-transform: none; }
         .zk-mpesa__credit { color: var(--zk-muted); font-size: 14px; margin-bottom: 22px; }
-        .zk-swychr__form .form-select { height: 50px; font-size: 16px; font-weight: 600; }
+        .zk-swychr__form .form-select { height: 50px; font-size: 15px; font-weight: 600; }
         .zk-swychr__form .input-group-text { font-size: 16px; background-color: #f1f5f9; }
         .zk-swychr__form .form-control { height: 50px; font-size: 16px; font-weight: 600; }
     </style>
@@ -162,6 +187,7 @@
             const dialPrefix = document.getElementById('dialPrefix');
             const phoneInput = document.getElementById('phoneNumber');
             const channelBadge = document.getElementById('channelBadge');
+            const displayAmount = document.getElementById('displayPayAmount');
             const form = document.getElementById('zkSwychrForm');
             const payBtn = document.getElementById('zkSwychrPay');
 
@@ -173,7 +199,9 @@
                         const dial = opt.getAttribute('data-dial');
                         const example = opt.getAttribute('data-example');
                         const channels = opt.getAttribute('data-channels');
+                        const formatted = opt.getAttribute('data-formatted');
                         if (dialPrefix) dialPrefix.textContent = '+' + dial;
+                        if (displayAmount && formatted) displayAmount.textContent = formatted;
                         if (phoneInput) {
                             phoneInput.placeholder = example || '0712 345 678';
                             if (currentDial && dial !== currentDial) {

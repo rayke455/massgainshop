@@ -124,6 +124,151 @@ class SwychrController extends Controller
     ];
 
     /**
+     * Map country ISO code to local currency.
+     */
+    public static $countryCurrencyMap = [
+        'KE' => 'KES',
+        'UG' => 'UGX',
+        'TZ' => 'TZS',
+        'RW' => 'RWF',
+        'NG' => 'NGN',
+        'GH' => 'GHS',
+        'CM' => 'XAF',
+        'CI' => 'XOF',
+        'SN' => 'XOF',
+        'CD' => 'CDF',
+        'BJ' => 'XOF',
+        'TG' => 'XOF',
+        'GA' => 'XAF',
+        'ZM' => 'ZMW',
+        'ZA' => 'ZAR',
+    ];
+
+    /**
+     * Fallback conversion rates (per USD) and currency symbols if not in DB.
+     */
+    public static $fallbackCurrencyInfo = [
+        'USD' => ['rate' => 1.0,    'symbol' => '$'],
+        'KES' => ['rate' => 130.0,  'symbol' => 'KSh'],
+        'TZS' => ['rate' => 2650.0, 'symbol' => 'TSh'],
+        'UGX' => ['rate' => 3700.0, 'symbol' => 'USh'],
+        'RWF' => ['rate' => 1350.0, 'symbol' => 'FRw'],
+        'NGN' => ['rate' => 1600.0, 'symbol' => '₦'],
+        'GHS' => ['rate' => 15.50,  'symbol' => 'GH₵'],
+        'XAF' => ['rate' => 615.0,  'symbol' => 'FCFA'],
+        'XOF' => ['rate' => 615.0,  'symbol' => 'CFA'],
+        'CDF' => ['rate' => 2800.0, 'symbol' => 'FC'],
+        'ZMW' => ['rate' => 27.0,   'symbol' => 'ZK'],
+        'ZAR' => ['rate' => 18.0,   'symbol' => 'R'],
+    ];
+
+    /**
+     * Currencies that operate in whole numbers without decimal subdivisions.
+     */
+    public static $zeroDecimalCurrencies = [
+        'TZS', 'UGX', 'RWF', 'XAF', 'XOF', 'CDF', 'KES', 'NGN'
+    ];
+
+    /**
+     * Get currency info (currency code, rate per USD, symbol) for a country code.
+     */
+    public static function getCountryCurrencyInfo(string $countryCode, $gateway = null): array
+    {
+        $countryCode = strtoupper($countryCode);
+        $curr = self::$countryCurrencyMap[$countryCode] ?? 'USD';
+        return self::getCurrencyInfoByCode($curr, $gateway);
+    }
+
+    /**
+     * Get currency info by ISO currency code (e.g. TZS, KES, USD).
+     */
+    public static function getCurrencyInfoByCode(string $currencyCode, $gateway = null): array
+    {
+        $curr = strtoupper($currencyCode);
+        $fallback = self::$fallbackCurrencyInfo[$curr] ?? ['rate' => 1.0, 'symbol' => $curr];
+        $rate = (float) $fallback['rate'];
+        $symbol = (string) $fallback['symbol'];
+
+        // 1. Check Gateway configured receivable_currencies
+        if ($gateway && !empty($gateway->receivable_currencies)) {
+            foreach ($gateway->receivable_currencies as $rc) {
+                $rcName = strtoupper((string) ($rc->name ?? $rc->currency ?? ''));
+                if ($rcName === $curr) {
+                    if (!empty($rc->conversion_rate) && (float) $rc->conversion_rate > 0) {
+                        $rate = (float) $rc->conversion_rate;
+                    }
+                    if (!empty($rc->currency_symbol)) {
+                        $symbol = (string) $rc->currency_symbol;
+                    }
+                    return [
+                        'currency' => $curr,
+                        'rate'     => $rate,
+                        'symbol'   => $symbol,
+                    ];
+                }
+            }
+        }
+
+        // 2. Check global currencies table
+        try {
+            $dbCurr = \App\Models\Currency::where('code', $curr)->first();
+            if ($dbCurr && (float) $dbCurr->conversion_rate > 0) {
+                $rate = (float) $dbCurr->conversion_rate;
+                $symbol = (string) ($dbCurr->symbol ?: $curr);
+            }
+        } catch (\Throwable $e) {}
+
+        return [
+            'currency' => $curr,
+            'rate'     => $rate,
+            'symbol'   => $symbol,
+        ];
+    }
+
+    /**
+     * Calculate the payable amount to send to Swychr in the target country's currency.
+     */
+    public static function calculateChargeAmount(Deposit $deposit, string $countryCode, $gateway = null): array
+    {
+        $countryCode = strtoupper($countryCode);
+        $currInfo = self::getCountryCurrencyInfo($countryCode, $gateway);
+        $targetCurrency = $currInfo['currency'];
+        $targetRate = $currInfo['rate'];
+        $symbol = $currInfo['symbol'];
+        $isZeroDecimal = in_array($targetCurrency, self::$zeroDecimalCurrencies);
+
+        // If deposit payment currency is already the target currency, use payable_amount directly
+        if (strtoupper((string) $deposit->payment_method_currency) === $targetCurrency) {
+            $amount = $isZeroDecimal ? round($deposit->payable_amount) : round($deposit->payable_amount, 2);
+            return [
+                'amount'   => (float) $amount,
+                'currency' => $targetCurrency,
+                'rate'     => $targetRate,
+                'symbol'   => $symbol,
+            ];
+        }
+
+        // Base amount in USD
+        $baseAmount = (float) $deposit->payable_amount_in_base_currency;
+        if ($baseAmount <= 0) {
+            $depCurr = strtoupper((string) ($deposit->payment_method_currency ?: 'USD'));
+            $depInfo = self::getCurrencyInfoByCode($depCurr, $gateway);
+            $depRate = $depInfo['rate'] > 0 ? $depInfo['rate'] : 1.0;
+            $baseAmount = (float) $deposit->payable_amount / $depRate;
+        }
+
+        $calculated = $baseAmount * $targetRate;
+        $chargeAmount = $isZeroDecimal ? round($calculated) : round($calculated, 2);
+
+        return [
+            'amount'   => (float) $chargeAmount,
+            'currency' => $targetCurrency,
+            'rate'     => $targetRate,
+            'symbol'   => $symbol,
+        ];
+    }
+
+    /**
      * Normalize a phone number to standard international digits without leading '+' or '0'.
      */
     public static function normalizePhone(?string $phone, string $countryCode): ?string
@@ -199,7 +344,11 @@ class SwychrController extends Controller
         }
 
         $user = auth()->user();
-        $amount = (float) round($deposit->payable_amount, 2);
+
+        // Calculate amount in the destination country's local currency
+        $chargeInfo = self::calculateChargeAmount($deposit, $countryCode, $gateway);
+        $amount = (float) $chargeInfo['amount'];
+        $chargeCurrency = $chargeInfo['currency'];
         $passCharge = !empty($gateway->parameters->pass_digital_charge) && (int) $gateway->parameters->pass_digital_charge === 1;
 
         $name = trim((string) (($user->firstname ?? '') . ' ' . ($user->lastname ?? '')));
@@ -220,7 +369,7 @@ class SwychrController extends Controller
             'amount'              => $amount,
             'name'                => $name,
             'email'               => (string) ($user->email ?? 'customer@massfameshop.com'),
-            'description'         => 'Deposit #' . $deposit->trx_id,
+            'description'         => 'Deposit #' . $deposit->trx_id . ' (' . $amount . ' ' . $chargeCurrency . ')',
             'pass_digital_charge' => $passCharge,
             'callback_url'        => route('ipn', ['swychr', $deposit->trx_id]),
             'failed_callback_url' => route('failed'),
