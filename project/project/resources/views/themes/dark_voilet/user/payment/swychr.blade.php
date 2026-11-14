@@ -7,32 +7,36 @@
         $zkUser = auth()->user();
         $countries = \App\Http\Controllers\SwychrController::$countries;
 
-        // Auto-detect default country
-        $defaultCountry = 'KE';
+        // Auto-detect default country: currency chosen by customer takes priority!
+        $currMap = [
+            'NGN' => 'NG', 'KES' => 'KE', 'UGX' => 'UG', 'TZS' => 'TZ',
+            'RWF' => 'RW', 'GHS' => 'GH', 'XAF' => 'CM', 'XOF' => 'CI',
+            'ZAR' => 'ZA', 'ZMW' => 'ZM', 'CDF' => 'CD',
+        ];
+        $currency = strtoupper((string) ($deposit->payment_method_currency ?? ''));
         $userDial = preg_replace('/\D+/', '', (string) ($zkUser?->phone_code ?? ''));
-        if (!empty($userDial)) {
+
+        if (!empty($currency) && isset($currMap[$currency])) {
+            $defaultCountry = $currMap[$currency];
+        } elseif (!empty($userDial)) {
+            $defaultCountry = 'KE';
             foreach ($countries as $cCode => $cInfo) {
                 if ($cInfo['dial'] === $userDial) {
                     $defaultCountry = $cCode;
                     break;
                 }
             }
-        } elseif ($deposit->payment_method_currency) {
-            $currMap = [
-                'KES' => 'KE', 'UGX' => 'UG', 'TZS' => 'TZ', 'RWF' => 'RW',
-                'NGN' => 'NG', 'GHS' => 'GH', 'XAF' => 'CM', 'XOF' => 'CI',
-                'ZAR' => 'ZA', 'ZMW' => 'ZM', 'CDF' => 'CD',
-            ];
-            $defaultCountry = $currMap[strtoupper($deposit->payment_method_currency)] ?? 'KE';
+        } else {
+            $defaultCountry = 'KE';
         }
 
         $selectedCountry = old('country_code', $defaultCountry);
         $selectedCountryInfo = $countries[$selectedCountry] ?? $countries['KE'];
 
-        // Pre-fill phone if available
+        // Pre-fill phone ONLY if user's saved country/dial code matches this country
         $rawPhone = preg_replace('/\D+/', '', (string) ($zkUser?->phone ?? ''));
         $phoneVal = old('phone');
-        if ($phoneVal === null && !empty($rawPhone)) {
+        if ($phoneVal === null && !empty($rawPhone) && !empty($userDial) && $userDial === $selectedCountryInfo['dial']) {
             $cDial = $selectedCountryInfo['dial'];
             if (str_starts_with($rawPhone, $cDial)) {
                 $phoneVal = '0' . substr($rawPhone, strlen($cDial));
@@ -162,6 +166,7 @@
             const payBtn = document.getElementById('zkSwychrPay');
 
             if (countrySelect) {
+                let currentDial = dialPrefix ? dialPrefix.textContent.replace('+', '').trim() : '';
                 countrySelect.addEventListener('change', function () {
                     const opt = this.options[this.selectedIndex];
                     if (opt) {
@@ -169,8 +174,14 @@
                         const example = opt.getAttribute('data-example');
                         const channels = opt.getAttribute('data-channels');
                         if (dialPrefix) dialPrefix.textContent = '+' + dial;
-                        if (phoneInput) phoneInput.placeholder = example || '0712 345 678';
+                        if (phoneInput) {
+                            phoneInput.placeholder = example || '0712 345 678';
+                            if (currentDial && dial !== currentDial) {
+                                phoneInput.value = '';
+                            }
+                        }
                         if (channelBadge) channelBadge.textContent = channels || '';
+                        currentDial = dial;
                     }
                 });
             }

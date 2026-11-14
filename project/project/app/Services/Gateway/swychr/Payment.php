@@ -73,8 +73,13 @@ class Payment
                 ?: $request->input('swychr_reference');
 
             if ($trxId) {
+                $baseTrx = explode('-', $trxId)[0];
                 $deposit = \App\Models\Deposit::with('user', 'depositable')
-                    ->where('trx_id', $trxId)
+                    ->where(function ($q) use ($trxId, $baseTrx) {
+                        $q->where('trx_id', $trxId)
+                          ->orWhere('trx_id', $baseTrx)
+                          ->orWhere('payment_id', $trxId);
+                    })
                     ->orderBy('id', 'DESC')
                     ->first();
             }
@@ -123,7 +128,8 @@ class Payment
 
         // 2. Query Swychr Payment Link Status for authoritative confirmation
         try {
-            $statusUrl = self::BASE_URL . '/payment_link_status?transaction_id=' . urlencode($deposit->trx_id);
+            $queryTrx = $deposit->payment_id ?: $deposit->trx_id;
+            $statusUrl = self::BASE_URL . '/payment_link_status?transaction_id=' . urlencode($queryTrx);
             $statusResponse = Http::withHeaders([
                 'Api-Key' => $apiKey,
                 'Accept'  => 'application/json',

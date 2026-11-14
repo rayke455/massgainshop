@@ -184,6 +184,14 @@ class SwychrController extends Controller
             ]));
         }
 
+        // Country-specific length checks to prevent invalid provider calls
+        if ($countryCode === 'NG' && strlen($normalizedPhone) !== 13) {
+            return back()->withInput()->with('error', __('Please provide a valid 11-digit Nigerian phone number (e.g. 0803 123 4567 or 0701 234 5678).'));
+        }
+        if ($countryCode === 'KE' && strlen($normalizedPhone) !== 12) {
+            return back()->withInput()->with('error', __('Please provide a valid Kenyan mobile number (e.g. 0712 345 678 or 0112 345 678).'));
+        }
+
         $gateway = $deposit->gateway;
         $apiKey = trim($gateway->parameters->api_key ?? '');
         if (empty($apiKey)) {
@@ -199,9 +207,14 @@ class SwychrController extends Controller
             $name = (string) ($user->username ?? 'Customer');
         }
 
+        // Swychr requires transaction_id to be unique. If details change (e.g. customer switches country/phone),
+        // we append a short hash of the details so Swychr doesn't reject with HTTP 409 "Transaction ID already used with different details".
+        $detailHash = substr(md5($countryCode . ':' . $normalizedPhone . ':' . $amount), 0, 6);
+        $swychrTrxId = $deposit->trx_id . '-' . $detailHash;
+
         $payload = [
             'country_code'        => $countryCode,
-            'transaction_id'      => (string) $deposit->trx_id,
+            'transaction_id'      => $swychrTrxId,
             'mobile'              => $normalizedPhone,
             'mobile_no'           => $normalizedPhone,
             'amount'              => $amount,
@@ -226,9 +239,9 @@ class SwychrController extends Controller
             $paymentLink = $res['data']['payment_link'] ?? $res['payment_link'] ?? null;
 
             if ($response->successful() && !empty($paymentLink)) {
-                if (!empty($res['data']['transaction_id'])) {
-                    $deposit->update(['payment_id' => $res['data']['transaction_id']]);
-                }
+                $deposit->update([
+                    'payment_id' => $swychrTrxId,
+                ]);
                 return redirect()->away($paymentLink);
             }
 
