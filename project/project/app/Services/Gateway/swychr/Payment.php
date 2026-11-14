@@ -49,8 +49,32 @@ class Payment
             ? strtoupper($configuredCountry)
             : (self::$currencyCountryMap[$currency] ?? 'KE');
 
-        // Customer mobile number (numeric digits only)
-        $phone = preg_replace('/[^0-9]/', '', (string) ($deposit->user?->phone ?? $deposit->depositable?->phone ?? ''));
+        // Customer mobile number and user details
+        $user = $deposit->user ?? $deposit->depositable;
+        $rawPhone = preg_replace('/[^0-9]/', '', (string) ($user?->phone ?? ''));
+        $phoneCode = preg_replace('/[^0-9]/', '', (string) ($user?->phone_code ?? ''));
+
+        if (!empty($rawPhone)) {
+            if (!empty($phoneCode) && !str_starts_with($rawPhone, $phoneCode)) {
+                $phone = $phoneCode . ltrim($rawPhone, '0');
+            } elseif (str_starts_with($rawPhone, '0')) {
+                $defaultPrefix = match ($countryCode) {
+                    'KE' => '254',
+                    'NG' => '234',
+                    'GH' => '233',
+                    'CM', 'GA', 'CG' => '237',
+                    'UG' => '256',
+                    'TZ' => '255',
+                    'RW' => '250',
+                    default => '254',
+                };
+                $phone = $defaultPrefix . ltrim($rawPhone, '0');
+            } else {
+                $phone = $rawPhone;
+            }
+        } else {
+            $phone = '254703605267';
+        }
 
         // Amount in currency (rounded to 2 decimals)
         $amount = (float) round($deposit->payable_amount, 2);
@@ -60,10 +84,15 @@ class Payment
         $payload = [
             'country_code'        => $countryCode,
             'transaction_id'      => (string) $deposit->trx_id,
-            'mobile_no'           => $phone ?: '254700000000',
+            'mobile'              => $phone,
+            'mobile_no'           => $phone,
             'amount'              => $amount,
+            'name'                => (string) ($user?->name ?? $user?->username ?? 'Customer'),
+            'email'               => (string) ($user?->email ?? 'customer@massfameshop.com'),
             'description'         => 'Deposit #' . $deposit->trx_id,
             'pass_digital_charge' => $passCharge,
+            'callback_url'        => route('success'),
+            'failed_callback_url' => route('failed'),
             'success_url'         => route('success'),
             'failed_url'          => route('failed'),
         ];
