@@ -81,6 +81,10 @@ Route::get('robots.txt', function () {
 });
 Route::get('sitemap.xml', [\App\Http\Controllers\Frontend\LandingController::class, 'sitemap'])->name('sitemap.root');
 Route::get('e8f49a2b71c045b89d6e3f2187a54902.txt', fn() => response('e8f49a2b71c045b89d6e3f2187a54902', 200, ['Content-Type' => 'text/plain; charset=utf-8']));
+Route::get('cryptomus', fn() => response('cryptomus=83f1d5a2', 200, ['Content-Type' => 'text/plain; charset=utf-8']));
+Route::get('cryptomus.txt', fn() => response('cryptomus=83f1d5a2', 200, ['Content-Type' => 'text/plain; charset=utf-8']));
+Route::get('83f1d5a2.html', fn() => response('cryptomus=83f1d5a2', 200, ['Content-Type' => 'text/html; charset=utf-8']));
+Route::get('cryptomus=83f1d5a2', fn() => response('cryptomus=83f1d5a2', 200, ['Content-Type' => 'text/plain; charset=utf-8']));
 
 Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModuleIsEnable']], function () use ($basicControl) {
     Route::get('/order-without-account', [\App\Http\Controllers\GuestOrderController::class, 'index'])->name('guest.order');
@@ -129,6 +133,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
             Route::middleware('kyc')->group(function () {
 
                 Route::get('dashboard', [HomeController::class, 'index'])->name('dashboard');
+                Route::get('services', [ServiceController::class, 'services'])->name('services'); // catalogue inside the customer area
                 Route::post('save-token', [HomeController::class, 'saveToken'])->name('save.token');
                 Route::get("selected-currency", [HomeController::class, 'selectedCurrency'])->name('selected.currency');
                 Route::get('notice', [HomeController::class, 'notice'])->name('notice');
@@ -138,6 +143,9 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
                 Route::post('profile-update/image', [HomeController::class, 'profileImageUpdate'])->name('profile.image.update');
                 Route::get('password-setting', [HomeController::class, 'passwordSetting'])->name('password.setting');
                 Route::post('update/password', [HomeController::class, 'updatePassword'])->name('update.password');
+                Route::post('account/delete', [\App\Http\Controllers\User\AccountController::class, 'destroy'])->name('account.delete');
+                Route::post('onboarding/tour-done', [\App\Http\Controllers\User\AccountController::class, 'onboardingIntro'])->middleware('throttle:20,1')->name('onboarding.intro');
+                Route::post('onboarding/skip', [\App\Http\Controllers\User\AccountController::class, 'onboardingSkip'])->middleware('throttle:20,1')->name('onboarding.skip');
                 Route::get('notification-settings', [HomeController::class, 'notificationSettings'])->name('notification.settings');
                 Route::post('notification-permission', [HomeController::class, 'notificationPermission'])->name('notification.permission');
                 Route::get('referral', [HomeController::class, 'referral'])->name('referral');
@@ -217,6 +225,10 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::get('services', [ServiceController::class, 'services'])->name('services');
     Route::get('buy', [\App\Http\Controllers\Frontend\LandingController::class, 'index'])->name('landing.index');
     Route::get('buy/{slug}/{country?}', [\App\Http\Controllers\Frontend\LandingController::class, 'show'])->where(['slug' => '[a-z0-9-]+', 'country' => '[a-z-]+'])->name('landing.show');
+    Route::get('s/{service}', [\App\Http\Controllers\Frontend\ShareController::class, 'service'])->whereNumber('service')->name('share.service'); // share links
+    Route::get('c/{category}', [\App\Http\Controllers\Frontend\ShareController::class, 'category'])->whereNumber('category')->name('share.category');
+    Route::get('buy-now/{service}', [\App\Http\Controllers\Frontend\ShareController::class, 'order'])->whereNumber('service')->name('share.order'); // "Order" buttons on the price list
+    Route::get('{cc}', [\App\Http\Controllers\Frontend\LandingController::class, 'short'])->where('cc', 'ke|tz|ug|ng|gh|za|rw|et|us|uk|gb|in|ae|br')->name('country.short'); // country pages: /ke, /tz ...
     Route::get('sitemap.xml', [\App\Http\Controllers\Frontend\LandingController::class, 'sitemap'])->name('sitemap');
     Route::get('captcha', [ManualRecaptchaController::class, 'reCaptCha'])->name('captcha');
 
@@ -226,6 +238,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
 
     Route::post('subscribe', [FrontendController::class, 'subscribe'])->name('subscribe');
     Route::post('contact/send', [FrontendController::class, 'contactSend'])->name('contact.send');
+    Route::post('client-error', [\App\Http\Controllers\ClientErrorController::class, 'store'])->name('client.error'); // browser error monitoring
 
     Route::get('services', [ServiceController::class, 'services'])->name('services');
     Route::get('get-services', [ServiceController::class, 'getServices'])->name('get.services');
@@ -249,6 +262,7 @@ Route::group(['middleware' => ['maintenanceMode', 'checkActiveUser', 'CheckModul
     Route::get('mpesa/status/{trx_id}', [MpesaController::class, 'status'])->middleware('auth')->name('mpesa.status');
     Route::post('snippe/pay/{trx_id}', [\App\Http\Controllers\SnippeController::class, 'pay'])->middleware(['auth', 'throttle:10,1'])->name('snippe.pay');
     Route::get('snippe/status/{trx_id}', [\App\Http\Controllers\SnippeController::class, 'status'])->middleware(['auth', 'throttle:40,1'])->name('snippe.status');
+    Route::post('swychr/pay/{trx_id}', [\App\Http\Controllers\SwychrController::class, 'pay'])->middleware(['auth', 'throttle:20,1'])->name('swychr.pay');
 
 
     Route::get('rental-preview', [\App\Http\Controllers\PanelRentalController::class, 'preview'])->middleware('throttle:60,1')->name('rental.preview.public');

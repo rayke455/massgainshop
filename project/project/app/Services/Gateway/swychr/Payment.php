@@ -27,7 +27,7 @@ class Payment
     ];
 
     /**
-     * Prepare payment request and obtain hosted checkout link from Swychr Pay.
+     * Prepare payment data and present checkout confirmation view for country & phone input.
      *
      * @param  \App\Models\Deposit  $deposit
      * @param  \App\Models\Gateway  $gateway
@@ -43,101 +43,11 @@ class Payment
             ]);
         }
 
-        $currency = strtoupper($deposit->payment_method_currency ?: 'KES');
-        $configuredCountry = trim($gateway->parameters->country_code ?? '');
-        $countryCode = !empty($configuredCountry)
-            ? strtoupper($configuredCountry)
-            : (self::$currencyCountryMap[$currency] ?? 'KE');
+        $send['amount'] = round($deposit->payable_amount, 2);
+        $send['currency'] = $deposit->payment_method_currency;
+        $send['view'] = 'user.payment.swychr';
 
-        // Customer mobile number and user details
-        $user = $deposit->user ?? $deposit->depositable;
-        $rawPhone = preg_replace('/[^0-9]/', '', (string) ($user?->phone ?? ''));
-        $phoneCode = preg_replace('/[^0-9]/', '', (string) ($user?->phone_code ?? ''));
-
-        if (!empty($rawPhone)) {
-            if (!empty($phoneCode) && !str_starts_with($rawPhone, $phoneCode)) {
-                $phone = $phoneCode . ltrim($rawPhone, '0');
-            } elseif (str_starts_with($rawPhone, '0')) {
-                $defaultPrefix = match ($countryCode) {
-                    'KE' => '254',
-                    'NG' => '234',
-                    'GH' => '233',
-                    'CM', 'GA', 'CG' => '237',
-                    'UG' => '256',
-                    'TZ' => '255',
-                    'RW' => '250',
-                    default => '254',
-                };
-                $phone = $defaultPrefix . ltrim($rawPhone, '0');
-            } else {
-                $phone = $rawPhone;
-            }
-        } else {
-            $phone = '254703605267';
-        }
-
-        // Amount in currency (rounded to 2 decimals)
-        $amount = (float) round($deposit->payable_amount, 2);
-
-        $passCharge = !empty($gateway->parameters->pass_digital_charge) && (int) $gateway->parameters->pass_digital_charge === 1;
-
-        $payload = [
-            'country_code'        => $countryCode,
-            'transaction_id'      => (string) $deposit->trx_id,
-            'mobile'              => $phone,
-            'mobile_no'           => $phone,
-            'amount'              => $amount,
-            'name'                => (string) ($user?->name ?? $user?->username ?? 'Customer'),
-            'email'               => (string) ($user?->email ?? 'customer@massfameshop.com'),
-            'description'         => 'Deposit #' . $deposit->trx_id,
-            'pass_digital_charge' => $passCharge,
-            'callback_url'        => route('success'),
-            'failed_callback_url' => route('failed'),
-            'success_url'         => route('success'),
-            'failed_url'          => route('failed'),
-        ];
-
-        try {
-            $response = Http::withHeaders([
-                'Api-Key'      => $apiKey,
-                'Accept'       => 'application/json',
-                'Content-Type' => 'application/json',
-            ])->timeout(30)->post(self::BASE_URL . '/create_payment_links', $payload);
-
-            $res = $response->json();
-
-            // Swychr returns payment_link directly or under data
-            $paymentLink = $res['data']['payment_link'] ?? $res['payment_link'] ?? null;
-
-            if ($response->successful() && !empty($paymentLink)) {
-                return json_encode([
-                    'redirect'     => true,
-                    'redirect_url' => $paymentLink,
-                ]);
-            }
-
-            Log::error('Swychr create payment link failed', [
-                'trx_id'   => $deposit->trx_id,
-                'status'   => $response->status(),
-                'response' => $res,
-                'payload'  => $payload,
-            ]);
-
-            return json_encode([
-                'error'   => true,
-                'message' => $res['message'] ?? 'Unable to generate Swychr payment link. Please check gateway configuration.',
-            ]);
-
-        } catch (\Throwable $e) {
-            Log::error('Swychr prepareData exception: ' . $e->getMessage(), [
-                'trx_id' => $deposit->trx_id,
-            ]);
-
-            return json_encode([
-                'error'   => true,
-                'message' => 'Payment gateway error: ' . $e->getMessage(),
-            ]);
-        }
+        return json_encode($send);
     }
 
     /**
